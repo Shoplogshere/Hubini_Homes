@@ -77,22 +77,22 @@ const updateProfile = async (userId, updates) => {
 const getUserStats = async (userId) => {
   // Device stats
   const deviceStats = await query(
-    `SELECT COUNT(*) as total, SUM(CASE WHEN is_online = 1 THEN 1 ELSE 0 END) as online
+    `SELECT COUNT(*)::int as total, SUM(CASE WHEN is_online THEN 1 ELSE 0 END)::int as online
      FROM devices WHERE user_id = ?`,
     [userId]
   );
 
   // Hub stats
   const hubStats = await query(
-    `SELECT COUNT(*) as total, SUM(CASE WHEN is_online = 1 THEN 1 ELSE 0 END) as online
+    `SELECT COUNT(*)::int as total, SUM(CASE WHEN is_online THEN 1 ELSE 0 END)::int as online
      FROM hubs WHERE user_id = ?`,
     [userId]
   );
 
   // Commands in last 24 hours
   const commandStats = await query(
-    `SELECT COUNT(*) as total FROM device_commands
-     WHERE user_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)`,
+    `SELECT COUNT(*)::int as total FROM device_commands
+     WHERE user_id = ? AND created_at >= NOW() - INTERVAL '24 hours'`,
     [userId]
   );
 
@@ -116,7 +116,7 @@ const getUserStats = async (userId) => {
  */
 const getActivityLog = async (userId, { page, limit, offset }) => {
   const countResult = await query(
-    'SELECT COUNT(*) as total FROM activity_logs WHERE user_id = ?',
+    'SELECT COUNT(*)::int as total FROM activity_logs WHERE user_id = ?',
     [userId]
   );
 
@@ -163,7 +163,7 @@ const logActivity = async (userId, { action, details, deviceId, hubId, ipAddress
  * Deactivate account
  */
 const deactivateAccount = async (userId) => {
-  await query('UPDATE users SET is_active = 0 WHERE id = ?', [userId]);
+  await query('UPDATE users SET is_active = FALSE WHERE id = ?', [userId]);
   await query(
     'UPDATE refresh_tokens SET revoked_at = NOW() WHERE user_id = ? AND revoked_at IS NULL',
     [userId]

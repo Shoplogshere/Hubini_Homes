@@ -53,15 +53,15 @@ const registerDevice = async (userId, { Local_ID, Name, Type, Model, trigs }) =>
 
   const result = await query(
     `INSERT INTO devices (cloud_id, user_id, local_id, name, type, model, trigs)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id`,
     [cloudId, userId, Local_ID, Name, Type, Model, trigs || null]
   );
 
   // Start activation timer — device must connect via WS or it gets deleted
-  scheduleActivationCleanup(result.insertId);
+  scheduleActivationCleanup(result[0].id);
 
   return {
-    id: result.insertId,
+    id: result[0].id,
     yourCloudID: cloudId
   };
 };
@@ -85,7 +85,7 @@ const getUserDevices = async (userId, { page, limit, offset, type, search }) => 
 
   // Get count
   const countResult = await query(
-    `SELECT COUNT(*) as total FROM devices ${whereClause}`,
+    `SELECT COUNT(*)::int as total FROM devices ${whereClause}`,
     params
   );
 
@@ -242,7 +242,7 @@ const updateDevice = async (userId, deviceId, updates) => {
  */
 const updateDeviceState = async (deviceId, state) => {
   await query(
-    'UPDATE devices SET last_state = ?, last_seen = NOW(), is_online = 1 WHERE id = ?',
+    'UPDATE devices SET last_state = ?, last_seen = NOW(), is_online = TRUE WHERE id = ?',
     [state, deviceId]
   );
 };
@@ -253,7 +253,7 @@ const updateDeviceState = async (deviceId, state) => {
 const setDeviceOnline = async (cloudId, isOnline) => {
   await query(
     'UPDATE devices SET is_online = ?, last_seen = NOW() WHERE cloud_id = ?',
-    [isOnline ? 1 : 0, cloudId]
+    [isOnline, cloudId]
   );
 };
 

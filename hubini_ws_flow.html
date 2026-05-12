@@ -2,283 +2,549 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Hubini WebSocket Flow</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
       font-family: 'Segoe UI', Arial, sans-serif;
+      background: #f4f6fb;
+      color: #1e2230;
       font-size: 14px;
-      color: #1a1a1a;
-      background: #fff;
-      padding: 60px 80px;
-      max-width: 800px;
-      margin: 0 auto;
-    }
-
-    h1 {
-      font-size: 22px;
-      font-weight: 700;
-      margin-bottom: 6px;
-    }
-
-    .download-btn {
-      display: inline-block;
-      margin-bottom: 40px;
-      padding: 10px 20px;
-      background: #1a1a1a;
-      color: #fff;
-      font-size: 13px;
-      font-weight: 600;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-      letter-spacing: 0.3px;
-    }
-
-    .download-btn:hover {
-      background: #333;
-    }
-
-    @media print {
-      .download-btn { display: none; }
-    }
-
-    .section {
-      margin-bottom: 36px;
-    }
-
-    .step-label {
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 1.2px;
-      text-transform: uppercase;
-      color: #888;
-      margin-bottom: 6px;
-    }
-
-    .step-title {
-      font-size: 16px;
-      font-weight: 700;
-      margin-bottom: 10px;
-    }
-
-    p {
-      line-height: 1.7;
-      color: #333;
-      margin-bottom: 10px;
-    }
-
-    .code-block {
-      background: #f5f5f5;
-      border-left: 3px solid #333;
-      padding: 12px 16px;
-      font-family: 'Courier New', monospace;
-      font-size: 12.5px;
-      line-height: 1.8;
-      margin: 12px 0;
-      white-space: pre;
-    }
-
-    .note {
-      background: #fffbe6;
-      border-left: 3px solid #f0c040;
-      padding: 10px 14px;
-      font-size: 13px;
-      margin-top: 10px;
       line-height: 1.6;
     }
 
-    .divider {
-      border: none;
-      border-top: 1px solid #e0e0e0;
-      margin: 36px 0;
+    .page {
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 40px 48px;
+      background: #fff;
     }
 
-    .summary-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 12px;
+    /* ── Header ── */
+    .header {
+      border-bottom: 3px solid #4f6ef7;
+      padding-bottom: 18px;
+      margin-bottom: 32px;
+    }
+    .header h1 {
+      font-size: 26px;
+      color: #4f6ef7;
+      letter-spacing: -0.5px;
+    }
+    .header p {
+      color: #666;
+      margin-top: 4px;
+      font-size: 13px;
     }
 
-    .summary-table th {
-      background: #f0f0f0;
-      text-align: left;
-      padding: 10px 14px;
-      font-size: 12px;
-      font-weight: 700;
+    /* ── Section headings ── */
+    h2 {
+      font-size: 16px;
+      color: #4f6ef7;
+      margin: 36px 0 10px;
       text-transform: uppercase;
       letter-spacing: 0.8px;
+      border-left: 4px solid #4f6ef7;
+      padding-left: 10px;
+    }
+    h3 {
+      font-size: 14px;
+      font-weight: 700;
+      margin: 20px 0 6px;
+      color: #1e2230;
     }
 
-    .summary-table td {
-      padding: 10px 14px;
-      border-bottom: 1px solid #ebebeb;
+    p { margin-bottom: 8px; }
+
+    /* ── Code / payload blocks ── */
+    .payload {
+      background: #1e2230;
+      color: #a8d8a8;
+      font-family: 'Consolas', 'Courier New', monospace;
       font-size: 13px;
+      padding: 12px 16px;
+      border-radius: 7px;
+      margin: 8px 0 12px;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .payload .dim  { color: #666; }
+    .payload .key  { color: #7ec8e3; }
+    .payload .val  { color: #f9c74f; }
+
+    /* ── Flow arrow diagrams ── */
+    .flow {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      margin: 12px 0;
+      flex-wrap: wrap;
+    }
+    .box {
+      background: #eef1fd;
+      border: 1.5px solid #4f6ef7;
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-weight: 600;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+    .box.device  { background: #fff3cd; border-color: #f4a61d; }
+    .box.cloud   { background: #d4edda; border-color: #28a745; }
+    .box.app     { background: #dde8ff; border-color: #4f6ef7; }
+    .arrow {
+      font-size: 20px;
+      color: #999;
+      padding: 0 8px;
+      line-height: 1;
+    }
+    .arrow-label {
+      font-size: 11px;
+      color: #888;
+      padding: 0 4px;
+      white-space: nowrap;
+    }
+    .arrow-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 0 4px;
+    }
+
+    /* ── Note boxes ── */
+    .note {
+      background: #fffbea;
+      border-left: 4px solid #f4a61d;
+      padding: 10px 14px;
+      border-radius: 0 6px 6px 0;
+      margin: 12px 0;
+      font-size: 13px;
+      color: #5c4a00;
+    }
+    .note strong { color: #c67c00; }
+
+    .info {
+      background: #eef1fd;
+      border-left: 4px solid #4f6ef7;
+      padding: 10px 14px;
+      border-radius: 0 6px 6px 0;
+      margin: 12px 0;
+      font-size: 13px;
+      color: #2d3a8c;
+    }
+
+    /* ── Table ── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      font-size: 13px;
+    }
+    th {
+      background: #4f6ef7;
+      color: #fff;
+      text-align: left;
+      padding: 8px 12px;
+    }
+    td {
+      padding: 7px 12px;
+      border-bottom: 1px solid #e8eaf0;
       vertical-align: top;
     }
-
-    .summary-table tr:last-child td {
-      border-bottom: none;
+    tr:nth-child(even) td { background: #f7f8fd; }
+    td code {
+      background: #1e2230;
+      color: #a8d8a8;
+      font-family: 'Consolas', monospace;
+      font-size: 12px;
+      padding: 1px 6px;
+      border-radius: 4px;
     }
 
-    .tag {
-      display: inline-block;
-      background: #1a1a1a;
+    /* ── Divider ── */
+    hr {
+      border: none;
+      border-top: 1px solid #e0e4f0;
+      margin: 32px 0;
+    }
+
+    /* ── Download button ── */
+    .dl-bar {
+      position: fixed;
+      top: 16px;
+      right: 20px;
+      z-index: 999;
+    }
+    .dl-btn {
+      background: #4f6ef7;
       color: #fff;
-      font-size: 11px;
-      font-family: 'Courier New', monospace;
-      padding: 2px 8px;
-      border-radius: 3px;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 20px;
+      font-size: 14px;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 2px 10px rgba(79,110,247,0.35);
+      transition: background 0.15s;
+    }
+    .dl-btn:hover { background: #3a57d4; }
+    .dl-btn:disabled { background: #aab3e8; cursor: not-allowed; }
+
+    /* ── Print ── */
+    @media print {
+      body { background: #fff; }
+      .page { padding: 20px 28px; }
+      h2 { page-break-after: avoid; }
+      .payload, .flow, table { page-break-inside: avoid; }
+      .dl-bar { display: none; }
     }
   </style>
 </head>
 <body>
 
-  <h1>Hubini — WebSocket Connection Flow</h1>
-  <br />
-  <button class="download-btn" onclick="window.print()">Download as PDF</button>
+<div class="dl-bar">
+  <button class="dl-btn" id="dlBtn" onclick="downloadPDF()">Download PDF</button>
+</div>
 
-  <hr class="divider" />
+<div class="page" id="content">
 
-  <!-- STEP 1 -->
-  <div class="section">
-    <div class="step-label">Step 1</div>
-    <div class="step-title">Device Opens a Connection</div>
-    <p>
-      The device connects to the server over WebSocket at the address below.
-      No data is sent yet — just the connection itself.
-    </p>
-    <div class="code-block">wss://hubini-homes.onrender.com/ws</div>
-    <p>
-      As soon as the connection is made, the server assigns it a temporary unique ID
-      (a UUID) so it can track this socket even before the device has identified itself.
-    </p>
-    <div class="note">
-      The server also sends back a welcome message right away:<br />
-      <strong>{ type: "connected", message: "Connected to Hubini WebSocket. Please authenticate." }</strong>
-    </div>
-  </div>
-
-  <hr class="divider" />
-
-  <!-- STEP 2 -->
-  <div class="section">
-    <div class="step-label">Step 2</div>
-    <div class="step-title">Device Identifies Itself</div>
-    <p>
-      After connecting, the device must immediately send its Cloud ID to the server
-      so the server knows which device this socket belongs to.
-    </p>
-    <p>The message format is a plain string — not JSON:</p>
-    <div class="code-block">MeWs|DEV_XXXXXXXXXXXXXXXXXX</div>
-    <p>
-      The part before the pipe (<span class="tag">|</span>) is always <strong>MeWs</strong>.
-      The part after is the device's Cloud ID, which starts with <strong>DEV_</strong>.
-    </p>
-    <p>Once the server receives this, it maps the socket to that Cloud ID and marks the device as online in the database.</p>
-    <p>The server responds with:</p>
-    <div class="code-block">{ "type": "registered", "cloudId": "DEV_XXXXXXXXXXXXXXXXXX" }</div>
-  </div>
-
-  <hr class="divider" />
-
-  <!-- STEP 3 -->
-  <div class="section">
-    <div class="step-label">Step 3</div>
-    <div class="step-title">Server Can Now Send Commands</div>
-    <p>
-      Once the device is registered, the server can push commands to it at any time.
-      Commands come in this format:
-    </p>
-    <div class="code-block">{ "type": "command", "command": "ON" }</div>
-    <p>
-      The <strong>command</strong> value is whatever was set up when the device was registered
-      (stored in the <strong>Trigs</strong> field). The device should read this field and act on it.
+  <!-- Header -->
+  <div class="header">
+    <h1>Hubini — WebSocket Protocol Flow</h1>
+    <p>Cloud &harr; Device &harr; App communication spec &nbsp;&middot;&nbsp; Updated April 2026</p>
+    <p style="margin-top:8px;">
+      <strong>Backend:</strong>
+      <a href="https://hubini-homes.onrender.com" style="color:#4f6ef7;">https://hubini-homes.onrender.com</a>
     </p>
   </div>
 
-  <hr class="divider" />
 
-  <!-- STEP 4 -->
-  <div class="section">
-    <div class="step-label">Step 4</div>
-    <div class="step-title">Device Reports a State Change (Optional)</div>
-    <p>
-      If the device needs to report its current state back to the server (e.g. a sensor reading,
-      or confirming a command was executed), it sends:
-    </p>
-    <div class="code-block">{ "type": "device_state", "cloudId": "DEV_XXXXXXXXXXXXXXXXXX", "state": "ON" }</div>
-    <p>
-      The server will update the database and notify the owner's app in real time.
-    </p>
+  <!-- ────────────────────────────────────────── -->
+  <h2>1. Who Connects to What</h2>
+
+  <p>Everything connects to the cloud over a single WebSocket endpoint:</p>
+  <div class="payload">wss://hubini-homes.onrender.com/ws</div>
+
+  <p>REST API base:</p>
+  <div class="payload">https://hubini-homes.onrender.com/api/v1</div>
+
+  <p>Three types of clients can connect:</p>
+
+  <table>
+    <tr><th>Client type</th><th>What it is</th><th>First message after connect</th></tr>
+    <tr><td><strong>App</strong></td><td>Mobile / web app</td><td><code>auth|&lt;jwt&gt;</code></td></tr>
+    <tr><td><strong>Device (node)</strong></td><td>Physical IoT device</td><td><code>mews|&lt;dbId&gt;</code></td></tr>
+    <tr><td><strong>Hub</strong></td><td>Local IoT hub</td><td><code>mewh|&lt;dbId&gt;</code></td></tr>
+  </table>
+
+  <div class="note">
+    <strong>Heads up:</strong> The server sends <em>nothing</em> when a client first connects. The client always speaks first.
   </div>
 
-  <hr class="divider" />
 
-  <!-- STEP 5 -->
-  <div class="section">
-    <div class="step-label">Step 5</div>
-    <div class="step-title">Keeping the Connection Alive</div>
-    <p>
-      The server pings every connected socket every 30 seconds.
-      The WebSocket library handles the pong response automatically —
-      the device firmware doesn't need to do anything special for this.
-    </p>
-    <p>
-      If a device doesn't respond to the ping, the server will close the connection
-      and mark the device as offline.
-    </p>
-    <div class="note">
-      If the device wants to send its own heartbeat, it can send:<br />
-      <strong>{ type: "heartbeat" }</strong> — the server will respond with <strong>{ type: "heartbeat_ack" }</strong>
-    </div>
+  <!-- ────────────────────────────────────────── -->
+  <h2>2. App Connection &amp; Auth</h2>
+
+  <h3>Step 1 — App connects and authenticates</h3>
+
+  <div class="flow">
+    <div class="box app">App</div>
+    <div class="arrow-col"><div class="arrow">&rarr;</div><div class="arrow-label">auth|&lt;jwt&gt;</div></div>
+    <div class="box cloud">Cloud</div>
+    <div class="arrow-col"><div class="arrow">&rarr;</div><div class="arrow-label">auth|&lt;appId&gt;</div></div>
+    <div class="box app">App</div>
   </div>
 
-  <hr class="divider" />
+  <div class="payload">App sends:   auth|eyJhbGciOiJIUzI1NiIsInR5cCI6...
+Cloud replies: auth|a3f9c2e17d4b8801fa20</div>
 
-  <!-- SUMMARY -->
-  <div class="section">
-    <div class="step-label">Summary</div>
-    <div class="step-title">Message Reference</div>
-
-    <table class="summary-table">
-      <thead>
-        <tr>
-          <th>Direction</th>
-          <th>Message</th>
-          <th>When</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>Device → Server</td>
-          <td><span class="tag">MeWs|DEV_XXX</span></td>
-          <td>Right after connecting. Identifies the device.</td>
-        </tr>
-        <tr>
-          <td>Server → Device</td>
-          <td><span class="tag">{ type: "registered" }</span></td>
-          <td>Confirms the device is recognized.</td>
-        </tr>
-        <tr>
-          <td>Server → Device</td>
-          <td><span class="tag">{ type: "command" }</span></td>
-          <td>Sent when a user triggers the device from the app.</td>
-        </tr>
-        <tr>
-          <td>Device → Server</td>
-          <td><span class="tag">{ type: "device_state" }</span></td>
-          <td>Device reports its current state.</td>
-        </tr>
-        <tr>
-          <td>Device → Server</td>
-          <td><span class="tag">{ type: "heartbeat" }</span></td>
-          <td>Optional. Keeps the connection alive manually.</td>
-        </tr>
-      </tbody>
-    </table>
+  <div class="info">
+    The <strong>appId</strong> the cloud returns is this app session's identity. The app must save it and include it in every command it sends. It changes each new WS connection.
   </div>
+
+  <h3>Alternative — get appId via HTTP</h3>
+  <p>
+    The appId is also included in the response when the app fetches its device list over HTTPS.
+    Either way works — pick whichever fits the app flow better.
+  </p>
+  <div class="payload">GET /api/v1/devices/client  →  returns devices + appId</div>
+
+
+  <!-- ────────────────────────────────────────── -->
+  <h2>3. Device / Hub Registration</h2>
+
+  <h3>Device registers</h3>
+  <div class="flow">
+    <div class="box device">Device</div>
+    <div class="arrow-col"><div class="arrow">&rarr;</div><div class="arrow-label">mews|&lt;dbId&gt;</div></div>
+    <div class="box cloud">Cloud</div>
+    <div class="arrow-col"><div class="arrow">&rarr;</div><div class="arrow-label">registered|...</div></div>
+    <div class="box device">Device</div>
+  </div>
+
+  <div class="payload">Device sends:   mews|42
+Cloud replies:  registered|42|free|free
+                         dbId  userPlan  devPlan</div>
+
+  <p>The device should <strong>store the plans</strong> it gets here. The cloud won't resend them in every command.</p>
+
+  <h3>Hub registers</h3>
+  <p>Same flow, just replace <code>mews</code> with <code>mewh</code>. Response is identical.</p>
+
+  <div class="note">
+    <strong>Activation window:</strong> After a device/hub is registered via the REST API, it has ~1000 seconds to connect and send <code>mews</code>/<code>mewh</code>. If it doesn't connect in time, the cloud auto-deletes it from the database.
+  </div>
+
+
+  <!-- ────────────────────────────────────────── -->
+  <h2>4. Three-Way Command Flow (App &rarr; Cloud &rarr; Device &rarr; Back)</h2>
+
+  <div class="info">
+    Every payload in this flow always starts with:<br>
+    <strong>&lt;cmd&gt;|&lt;devId&gt;|&lt;appId&gt;|&lt;todo&gt;|&lt;args...&gt;</strong><br>
+    That leading structure is the contract — both sides can always parse who this is for and what to do.
+  </div>
+
+  <h3>Step 1 — App sends command</h3>
+  <div class="flow">
+    <div class="box app">App</div>
+    <div class="arrow-col"><div class="arrow">&rarr;</div><div class="arrow-label">c_nd|...</div></div>
+    <div class="box cloud">Cloud</div>
+  </div>
+
+  <div class="payload">c_nd|42|a3f9c2e17d4b8801fa20|triga|R2|0
+     dbId  appId                  todo   switchId  state</div>
+
+  <h3>Step 2 — Cloud relays to device</h3>
+  <p>Cloud swaps the <strong>dbId</strong> for the device's <strong>cloudId</strong> (the DEV_xxxx string) before forwarding:</p>
+  <div class="flow">
+    <div class="box cloud">Cloud</div>
+    <div class="arrow-col"><div class="arrow">&rarr;</div><div class="arrow-label">c_nd|...</div></div>
+    <div class="box device">Device</div>
+  </div>
+
+  <div class="payload">c_nd|DEV_abc123_f4e1|a3f9c2e17d4b8801fa20|triga|R2|0
+     cloudId              appId                  todo   switchId  state</div>
+
+  <div class="note">
+    <strong>Device:</strong> you receive the <code>appId</code> here but it's <em>not yours</em> — it belongs to the app session that sent the command. Just echo it back unchanged in your response so the cloud knows where to route the reply.
+  </div>
+
+  <h3>Step 3 — Device responds</h3>
+  <div class="flow">
+    <div class="box device">Device</div>
+    <div class="arrow-col"><div class="arrow">&rarr;</div><div class="arrow-label">r_nd|...</div></div>
+    <div class="box cloud">Cloud</div>
+    <div class="arrow-col"><div class="arrow">&rarr;</div><div class="arrow-label">r_nd|...</div></div>
+    <div class="box app">App</div>
+  </div>
+
+  <div class="payload">Device sends:
+r_nd|DEV_abc123_f4e1|a3f9c2e17d4b8801fa20|resptriga|R2|0|Off
+     cloudId              appId                 respTodo  switchId  state  stateName</div>
+
+  <p>Cloud updates the device's last state in the DB, then forwards the exact same payload to the app session that matches the <code>appId</code>.</p>
+
+  <h3>Todo / respTodo naming convention</h3>
+  <table>
+    <tr><th>todo (app &rarr; device)</th><th>respTodo (device &rarr; app)</th><th>Extra args</th></tr>
+    <tr><td><code>triga</code></td><td><code>resptriga</code></td><td>switchId | state | stateName</td></tr>
+    <tr><td><code>anything</code></td><td><code>respanything</code></td><td>whatever the device needs to return</td></tr>
+  </table>
+
+  <div class="info">
+    Pattern is always <strong>resp + todo</strong>. Simple and consistent on both sides.
+  </div>
+
+
+  <!-- ────────────────────────────────────────── -->
+  <h2>5. HTTP-Originated Commands (no app WS session)</h2>
+
+  <p>
+    When a command comes from an HTTP request (not a WS app session), the cloud sets <code>appId = -</code>.
+    The device still gets the same <code>c_nd</code> format. When it responds and the cloud sees <code>appId = -</code>,
+    it broadcasts the state update to <em>all</em> of that user's connected app sessions instead of routing to one specific app.
+  </p>
+
+  <div class="payload">c_nd|DEV_abc123_f4e1|-|triga|R2|0
+                       ^ appId = - means HTTP origin, response broadcasts to all user app sessions</div>
+
+
+  <!-- ────────────────────────────────────────── -->
+  <h2>6. Device Ping / Pong (Heartbeat &amp; Push)</h2>
+
+  <p>The device sends <code>ping</code> every ~30 seconds to stay alive on the cloud and to check if the server has anything for it.</p>
+
+  <h3>If nothing pending — cloud stays silent</h3>
+  <div class="flow">
+    <div class="box device">Device</div>
+    <div class="arrow-col"><div class="arrow">&rarr;</div><div class="arrow-label">ping</div></div>
+    <div class="box cloud">Cloud</div>
+    <div style="color:#bbb;font-size:13px;padding-left:12px;">← no reply</div>
+  </div>
+
+  <p>Cloud still updates <code>last_seen</code> and keeps the device marked online — it just doesn't send anything back.</p>
+
+  <h3>If server has queued data — cloud replies pong</h3>
+  <div class="flow">
+    <div class="box device">Device</div>
+    <div class="arrow-col"><div class="arrow">&rarr;</div><div class="arrow-label">ping</div></div>
+    <div class="box cloud">Cloud</div>
+    <div class="arrow-col"><div class="arrow">&rarr;</div><div class="arrow-label">pong|...</div></div>
+    <div class="box device">Device</div>
+  </div>
+
+  <div class="payload">pong|DEV_abc123_f4e1|&lt;cmd&gt;|&lt;data&gt;
+     devId              what it is  the actual data</div>
+
+  <h3>Examples of queued pong payloads</h3>
+  <table>
+    <tr><th>Scenario</th><th>Payload</th></tr>
+    <tr><td>Booking queued (e.g. GhostAir)</td><td><code>pong|DEV_xxxx|gair_b|&lt;booking data&gt;</code></td></tr>
+    <tr><td>User plan changed</td><td><code>pong|DEV_xxxx|plan_change|free|pro</code></td></tr>
+  </table>
+
+  <div class="note">
+    <strong>How the queue works:</strong> The cloud keeps a per-device queue. Whenever something needs to reach a device (booking, plan update, etc.), it gets added to that queue. On the next <code>ping</code>, the cloud drains the whole queue — one <code>pong</code> per item — then clears it. If multiple pings arrive before anything is queued, the cloud just stays silent each time.
+  </div>
+
+
+  <!-- ────────────────────────────────────────── -->
+  <h2>7. Quick Reference — All Commands</h2>
+
+  <table>
+    <tr><th>Command</th><th>Direction</th><th>Format</th></tr>
+    <tr>
+      <td><code>auth</code></td>
+      <td>App &rarr; Cloud</td>
+      <td><code>auth|&lt;jwt&gt;</code></td>
+    </tr>
+    <tr>
+      <td><code>auth</code> (response)</td>
+      <td>Cloud &rarr; App</td>
+      <td><code>auth|&lt;appId&gt;</code></td>
+    </tr>
+    <tr>
+      <td><code>mews</code></td>
+      <td>Device &rarr; Cloud</td>
+      <td><code>mews|&lt;dbId&gt;</code></td>
+    </tr>
+    <tr>
+      <td><code>mewh</code></td>
+      <td>Hub &rarr; Cloud</td>
+      <td><code>mewh|&lt;dbId&gt;</code></td>
+    </tr>
+    <tr>
+      <td><code>registered</code></td>
+      <td>Cloud &rarr; Device/Hub</td>
+      <td><code>registered|&lt;dbId&gt;|&lt;userPlan&gt;|&lt;devPlan&gt;</code></td>
+    </tr>
+    <tr>
+      <td><code>getds</code></td>
+      <td>App &rarr; Cloud</td>
+      <td><code>getds</code></td>
+    </tr>
+    <tr>
+      <td><code>ds</code></td>
+      <td>Cloud &rarr; App</td>
+      <td><code>ds|id:localId:name:type:state:trigs|...</code></td>
+    </tr>
+    <tr>
+      <td><code>c_nd</code></td>
+      <td>App &rarr; Cloud &rarr; Device</td>
+      <td><code>c_nd|&lt;devId&gt;|&lt;appId&gt;|&lt;todo&gt;|&lt;args...&gt;</code></td>
+    </tr>
+    <tr>
+      <td><code>r_nd</code></td>
+      <td>Device &rarr; Cloud &rarr; App</td>
+      <td><code>r_nd|&lt;devId&gt;|&lt;appId&gt;|&lt;respTodo&gt;|&lt;args...&gt;</code></td>
+    </tr>
+    <tr>
+      <td><code>ping</code></td>
+      <td>Device &rarr; Cloud</td>
+      <td><code>ping</code></td>
+    </tr>
+    <tr>
+      <td><code>pong</code></td>
+      <td>Cloud &rarr; Device</td>
+      <td><code>pong|&lt;devId&gt;|&lt;cmd&gt;|&lt;data&gt;</code> &nbsp;(only when queue has data)</td>
+    </tr>
+    <tr>
+      <td><code>error</code></td>
+      <td>Cloud &rarr; Any</td>
+      <td><code>error|&lt;reason&gt;</code></td>
+    </tr>
+  </table>
+
+
+  <!-- ────────────────────────────────────────── -->
+  <h2>8. Full Example — App Controls a Switch</h2>
+
+  <div class="payload">1. App authenticates:
+App   &rarr; Cloud :  auth|eyJhbGci...
+Cloud &rarr; App   :  auth|a3f9c2e17d4b8801fa20   &larr; app saves this as its appId
+
+2. App sends command to turn off switch R2 on device 42:
+App   &rarr; Cloud :  c_nd|42|a3f9c2e17d4b8801fa20|triga|R2|0
+
+3. Cloud relays to device (swaps dbId &rarr; cloudId):
+Cloud &rarr; Device:  c_nd|DEV_abc123_f4e1|a3f9c2e17d4b8801fa20|triga|R2|0
+
+4. Device executes, responds:
+Device&rarr; Cloud :  r_nd|DEV_abc123_f4e1|a3f9c2e17d4b8801fa20|resptriga|R2|0|Off
+
+5. Cloud updates DB state, routes response back to app:
+Cloud &rarr; App   :  r_nd|DEV_abc123_f4e1|a3f9c2e17d4b8801fa20|resptriga|R2|0|Off</div>
+
+
+  <hr>
+  <p style="color:#aaa;font-size:12px;text-align:center;">
+    Hubini Cloud &middot; Internal use &middot; April 2026
+  </p>
+
+</div>
+
+<script>
+  function downloadPDF() {
+    const btn = document.getElementById('dlBtn');
+    btn.disabled = true;
+    btn.textContent = 'Generating...';
+
+    const el = document.getElementById('content');
+
+    // Temporarily remove centering so html2canvas starts capture at x=0
+    const prevMargin   = el.style.margin;
+    const prevMaxWidth = el.style.maxWidth;
+    el.style.margin   = '0';
+    el.style.maxWidth = 'none';
+
+    const opt = {
+      margin:      [10, 10, 10, 10],
+      filename:    'Hubini_WS_Flow.pdf',
+      image:       { type: 'jpeg', quality: 1 },
+      html2canvas: {
+        scale:      2,
+        useCORS:    true,
+        scrollY:    0,
+        scrollX:    0,
+        logging:    false
+      },
+      jsPDF:     { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pagebreak: { mode: 'legacy' }
+    };
+
+    html2pdf().set(opt).from(el).save().then(() => {
+      el.style.margin   = prevMargin;
+      el.style.maxWidth = prevMaxWidth;
+      btn.disabled = false;
+      btn.textContent = 'Download PDF';
+    });
+  }
+</script>
 
 </body>
 </html>

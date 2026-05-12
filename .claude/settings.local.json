@@ -3,7 +3,9 @@
     "allow": [
       "Bash(node *)",
       "Bash(python *)",
-      "Bash(del gen_doc.py)"
+      "Bash(del gen_doc.py)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\YungFlash\\\\Desktop\\\\projects\\\\Hubini_cloud_backend\" -Recurse -Directory)",
+      "Bash(Select-Object -ExpandProperty FullName)"
     ]
   }
 }

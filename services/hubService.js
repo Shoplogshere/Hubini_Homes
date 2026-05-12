@@ -53,15 +53,15 @@ const registerHub = async (userId, { hubToken, hubName, type, model }) => {
 
   const result = await query(
     `INSERT INTO hubs (cloud_id, user_id, hub_token, hub_name, type, model)
-     VALUES (?, ?, ?, ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?) RETURNING id`,
     [cloudId, userId, hubToken, hubName, type, model]
   );
 
   // Start activation timer — hub must connect via WS or it gets deleted
-  scheduleActivationCleanup(result.insertId);
+  scheduleActivationCleanup(result[0].id);
 
   return {
-    id: result.insertId,
+    id: result[0].id,
     your_cloudID: cloudId
   };
 };
@@ -72,7 +72,7 @@ const registerHub = async (userId, { hubToken, hubName, type, model }) => {
 const getUserHubs = async (userId, { page, limit, offset }) => {
   // Get count
   const countResult = await query(
-    'SELECT COUNT(*) as total FROM hubs WHERE user_id = ?',
+    'SELECT COUNT(*)::int as total FROM hubs WHERE user_id = ?',
     [userId]
   );
 
@@ -205,7 +205,7 @@ const updateHub = async (userId, hubId, updates) => {
 const setHubOnline = async (cloudId, isOnline) => {
   await query(
     'UPDATE hubs SET is_online = ?, last_seen = NOW() WHERE cloud_id = ?',
-    [isOnline ? 1 : 0, cloudId]
+    [isOnline, cloudId]
   );
 };
 

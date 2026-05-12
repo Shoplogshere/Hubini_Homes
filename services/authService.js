@@ -38,12 +38,12 @@ const register = async ({ email, username, password, firstName, lastName }) => {
   // Insert user
   const result = await query(
     `INSERT INTO users (email, username, password_hash, first_name, last_name, verification_token, verification_token_expires)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id`,
     [email, username, passwordHash, firstName || null, lastName || null, verificationToken, verificationExpires]
   );
 
   return {
-    userId: result.insertId,
+    userId: result[0].id,
     email,
     username,
     verificationToken // For email sending
@@ -146,7 +146,7 @@ const verifyEmail = async (token) => {
   }
 
   await query(
-    'UPDATE users SET is_verified = 1, verification_token = NULL, verification_token_expires = NULL WHERE id = ?',
+    'UPDATE users SET is_verified = TRUE, verification_token = NULL, verification_token_expires = NULL WHERE id = ?',
     [user.id]
   );
 
