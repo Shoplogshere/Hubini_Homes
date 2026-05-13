@@ -6,6 +6,9 @@ const hubService = require('../services/hubService');
 
 const generateAppId = () => crypto.randomBytes(10).toString('hex'); // 20 hex chars
 
+// Sent to every device/hub on mews/mewh so hardware knows the current tier pricing
+const PLANS = 'basic:0,stellar:2000,premium:5000,prime:8000';
+
 class WebSocketManager {
   constructor() {
     this.wss = null;
@@ -74,8 +77,9 @@ class WebSocketManager {
 
   // ─────────────────────────────────────────────
   // DEVICE MAPPING  —  mews|<dbId>
-  // Response: registered|<dbId>|<userPlan>|<devPlan>
-  // Device stores the plans at connection time — not repeated in every command
+  // Response: registered|<dbId>|<userPlan>|<devPlan>|<plans>
+  // plans = comma-separated tier:price pairs (e.g. basic:0,stellar:2000,...)
+  // Device stores all of this at connection time — not repeated in every command
   // ─────────────────────────────────────────────
 
   async handleDeviceMapping(ws, parts) {
@@ -110,8 +114,7 @@ class WebSocketManager {
 
       console.log(` Device mapped: dbId=${dbId}, cloud_id=${device.cloud_id}`);
 
-      // Plans sent once here — device stores them, no need to repeat in every relay
-      this.send(ws, `registered|${dbId}|${userPlan}|${devPlan}`);
+      this.send(ws, `registered|${dbId}|${userPlan}|${devPlan}|${PLANS}`);
     } catch (err) {
       console.error('Device mapping error:', err.message);
       this.send(ws, 'error|Mapping failed');
@@ -120,7 +123,7 @@ class WebSocketManager {
 
   // ─────────────────────────────────────────────
   // HUB MAPPING  —  mewh|<dbId>
-  // Response: registered|<dbId>|<userPlan>|<devPlan>
+  // Response: registered|<dbId>|<userPlan>|<devPlan>|<plans>
   // ─────────────────────────────────────────────
 
   async handleHubMapping(ws, parts) {
@@ -152,7 +155,7 @@ class WebSocketManager {
       await hubService.setHubOnline(hub.cloud_id, true);
 
       console.log(` Hub mapped: dbId=${dbId}, cloud_id=${hub.cloud_id}`);
-      this.send(ws, `registered|${dbId}|${userPlan}|${devPlan}`);
+      this.send(ws, `registered|${dbId}|${userPlan}|${devPlan}|${PLANS}`);
     } catch (err) {
       console.error('Hub mapping error:', err.message);
       this.send(ws, 'error|Mapping failed');

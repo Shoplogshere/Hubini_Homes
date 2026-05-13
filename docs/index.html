@@ -1,0 +1,1929 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hubini Cloud API Docs</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --sidebar-bg: #161b22;
+      --surface: #1c2128;
+      --surface2: #21262d;
+      --border: #30363d;
+      --text: #e6edf3;
+      --text-muted: #8b949e;
+      --accent: #58a6ff;
+      --accent-dim: #1f3a5f;
+      --green: #3fb950;
+      --green-dim: #1a3a24;
+      --yellow: #d29922;
+      --yellow-dim: #3d2f05;
+      --red: #f85149;
+      --red-dim: #3d1010;
+      --purple: #bc8cff;
+      --purple-dim: #2d1f4e;
+      --orange: #ffa657;
+      --orange-dim: #3d2200;
+      --code-bg: #161b22;
+      --radius: 8px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      min-height: 100vh;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    /* ── SIDEBAR ── */
+    #sidebar {
+      width: 260px;
+      min-width: 260px;
+      background: var(--sidebar-bg);
+      border-right: 1px solid var(--border);
+      padding: 0;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      flex-shrink: 0;
+    }
+
+    #sidebar::-webkit-scrollbar { width: 4px; }
+    #sidebar::-webkit-scrollbar-track { background: transparent; }
+    #sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    .sidebar-header {
+      padding: 20px 16px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .sidebar-logo {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: -0.3px;
+    }
+
+    .sidebar-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .sidebar-section {
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .sidebar-section-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-muted);
+      padding: 8px 16px 4px;
+    }
+
+    .sidebar-link {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px;
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 13px;
+      transition: all 0.15s;
+      border-left: 2px solid transparent;
+    }
+
+    .sidebar-link:hover {
+      color: var(--text);
+      background: var(--surface);
+      border-left-color: var(--border);
+    }
+
+    .sidebar-link.active {
+      color: var(--accent);
+      background: var(--accent-dim);
+      border-left-color: var(--accent);
+    }
+
+    .method-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .dot-get { background: var(--green); }
+    .dot-post { background: var(--accent); }
+    .dot-put { background: var(--yellow); }
+    .dot-delete { background: var(--red); }
+    .dot-ws { background: var(--purple); }
+
+    /* ── MAIN ── */
+    #main {
+      flex: 1;
+      min-width: 0;
+      padding: 0 40px 80px;
+      max-width: 900px;
+    }
+
+    .page-hero {
+      padding: 40px 0 32px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 40px;
+    }
+
+    .page-hero h1 {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      margin-bottom: 8px;
+    }
+
+    .page-hero p {
+      color: var(--text-muted);
+      font-size: 15px;
+      max-width: 600px;
+    }
+
+    .base-url-bar {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 8px 14px;
+      margin-top: 16px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+    }
+
+    .base-url-bar span { color: var(--text-muted); }
+    .base-url-bar strong { color: var(--green); }
+
+    /* ── SECTIONS ── */
+    .section {
+      margin-bottom: 56px;
+    }
+
+    .section-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 6px;
+      padding-top: 4px;
+    }
+
+    .section-desc {
+      color: var(--text-muted);
+      margin-bottom: 24px;
+      font-size: 13.5px;
+    }
+
+    /* ── ENDPOINT CARD ── */
+    .endpoint {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+
+    .endpoint-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.15s;
+    }
+
+    .endpoint-header:hover { background: var(--surface2); }
+
+    .method-badge {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      min-width: 54px;
+      text-align: center;
+      font-family: 'Courier New', monospace;
+    }
+
+    .badge-get    { background: var(--green-dim);  color: var(--green); }
+    .badge-post   { background: var(--accent-dim); color: var(--accent); }
+    .badge-put    { background: var(--yellow-dim); color: var(--yellow); }
+    .badge-delete { background: var(--red-dim);    color: var(--red); }
+    .badge-ws     { background: var(--purple-dim); color: var(--purple); }
+
+    .endpoint-path {
+      font-family: 'Courier New', monospace;
+      font-size: 13.5px;
+      color: var(--text);
+      flex: 1;
+    }
+
+    .endpoint-desc {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .lock-icon {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--yellow);
+      background: var(--yellow-dim);
+      border: 1px solid var(--yellow);
+      border-radius: 3px;
+      padding: 1px 5px;
+      letter-spacing: 0.3px;
+      opacity: 0.9;
+    }
+
+    .chevron {
+      color: var(--text-muted);
+      font-size: 12px;
+      transition: transform 0.2s;
+    }
+
+    .endpoint-body {
+      display: none;
+      padding: 0 16px 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    .endpoint-body.open { display: block; }
+    .chevron.open { transform: rotate(90deg); }
+
+    /* ── BODY CONTENT ── */
+    .body-note {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin: 12px 0 8px;
+    }
+
+    .body-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--text-muted);
+      margin: 16px 0 6px;
+    }
+
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+
+    .tag {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--text-muted);
+    }
+
+    .tag.required { border-color: var(--accent); color: var(--accent); }
+    .tag.optional { border-color: var(--border); color: var(--text-muted); }
+    .tag.auth-req { border-color: var(--yellow); color: var(--yellow); background: var(--yellow-dim); }
+
+    /* ── CODE BLOCKS ── */
+    .code-wrap {
+      position: relative;
+      margin-top: 6px;
+    }
+
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 14px 16px;
+      overflow-x: auto;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 12.5px;
+      line-height: 1.7;
+      color: #c9d1d9;
+    }
+
+    .copy-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .copy-btn:hover { background: var(--border); color: var(--text); }
+
+    .json-key    { color: #79c0ff; }
+    .json-str    { color: #a5d6ff; }
+    .json-num    { color: #f2cc60; }
+    .json-bool   { color: var(--orange); }
+    .json-null   { color: var(--text-muted); }
+    .json-comment { color: #6e7681; font-style: italic; }
+
+    /* ── PARAMS TABLE ── */
+    .params-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12.5px;
+      margin-top: 6px;
+    }
+
+    .params-table th {
+      text-align: left;
+      padding: 6px 10px;
+      background: var(--surface2);
+      color: var(--text-muted);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .params-table td {
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+
+    .params-table tr:last-child td { border-bottom: none; }
+
+    .param-name { font-family: 'Courier New', monospace; color: var(--accent); }
+    .param-type { color: var(--orange); font-family: 'Courier New', monospace; font-size: 11px; }
+    .param-req  { color: var(--red); font-size: 11px; }
+    .param-opt  { color: var(--text-muted); font-size: 11px; }
+    .param-desc { color: var(--text-muted); }
+
+    /* ── WS FLOW ── */
+    .ws-flow {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 16px;
+      margin-top: 8px;
+    }
+
+    .flow-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .flow-step:last-child { margin-bottom: 0; }
+
+    .flow-num {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--accent-dim);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .flow-content { flex: 1; }
+
+    .flow-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .flow-msg {
+      font-family: 'Courier New', monospace;
+      font-size: 12.5px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 6px 10px;
+      color: var(--text);
+      word-break: break-all;
+    }
+
+    .flow-arrow {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 3px;
+    }
+
+    .arrow-to-server   { color: var(--accent); }
+    .arrow-from-server { color: var(--green); }
+
+    /* ── CALLOUT ── */
+    .callout {
+      border-radius: 6px;
+      padding: 12px 14px;
+      margin: 12px 0;
+      font-size: 13px;
+      display: flex;
+      gap: 10px;
+    }
+
+    .callout-info  { background: var(--accent-dim); border: 1px solid #1f4a80; color: #a5d6ff; }
+    .callout-warn  { background: var(--yellow-dim); border: 1px solid #5c4a00; color: #e3b341; }
+    .callout-error { background: var(--red-dim);    border: 1px solid #5a1010; color: #ffa198; }
+
+    .callout-icon {
+      font-size: 10px;
+      font-weight: 800;
+      flex-shrink: 0;
+      margin-top: 2px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1.5px solid currentColor;
+      line-height: 1;
+    }
+
+    /* ── DIVIDER ── */
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 40px 0;
+    }
+
+    /* ── SCROLLBAR ── */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════ SIDEBAR ══════════════════ -->
+<nav id="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-logo">Hubini Cloud API</div>
+    <div class="sidebar-sub">v1.0 · API Reference</div>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-section-label">Overview</div>
+    <a href="#overview" class="sidebar-link">Getting Started</a>
+    <a href="#auth-flow" class="sidebar-link">Auth Flow</a>
+    <a href="#response-shape" class="sidebar-link">Response Shape</a>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-section-label">Auth</div>
+    <a href="#register"          class="sidebar-link"><span class="method-dot dot-post"></span>Register</a>
+    <a href="#login"             class="sidebar-link"><span class="method-dot dot-post"></span>Login</a>
+    <a href="#verify-email"      class="sidebar-link"><span class="method-dot dot-post"></span>Verify Email</a>
+    <a href="#resend-verification" class="sidebar-link"><span class="method-dot dot-post"></span>Resend Verification</a>
+    <a href="#forgot-password"   class="sidebar-link"><span class="method-dot dot-post"></span>Forgot Password</a>
+    <a href="#reset-password"    class="sidebar-link"><span class="method-dot dot-post"></span>Reset Password</a>
+    <a href="#refresh-token"     class="sidebar-link"><span class="method-dot dot-post"></span>Refresh Token</a>
+    <a href="#me"                class="sidebar-link"><span class="method-dot dot-get"></span>Me</a>
+    <a href="#logout"            class="sidebar-link"><span class="method-dot dot-post"></span>Logout</a>
+    <a href="#logout-all"        class="sidebar-link"><span class="method-dot dot-post"></span>Logout All</a>
+    <a href="#change-password"   class="sidebar-link"><span class="method-dot dot-post"></span>Change Password</a>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-section-label">Users</div>
+    <a href="#get-profile"     class="sidebar-link"><span class="method-dot dot-get"></span>Get Profile</a>
+    <a href="#update-profile"  class="sidebar-link"><span class="method-dot dot-put"></span>Update Profile</a>
+    <a href="#get-stats"       class="sidebar-link"><span class="method-dot dot-get"></span>Stats</a>
+    <a href="#get-activity"    class="sidebar-link"><span class="method-dot dot-get"></span>Activity Log</a>
+    <a href="#deactivate"      class="sidebar-link"><span class="method-dot dot-post"></span>Deactivate</a>
+    <a href="#delete-account"  class="sidebar-link"><span class="method-dot dot-delete"></span>Delete Account</a>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-section-label">Devices</div>
+    <a href="#register-device"   class="sidebar-link"><span class="method-dot dot-post"></span>Register Device</a>
+    <a href="#get-devices"       class="sidebar-link"><span class="method-dot dot-get"></span>Get Devices</a>
+    <a href="#get-devices-client" class="sidebar-link"><span class="method-dot dot-get"></span>Get Devices (Client)</a>
+    <a href="#get-device"        class="sidebar-link"><span class="method-dot dot-get"></span>Get Device</a>
+    <a href="#update-device"     class="sidebar-link"><span class="method-dot dot-put"></span>Update Device</a>
+    <a href="#delete-device"     class="sidebar-link"><span class="method-dot dot-delete"></span>Delete Device</a>
+    <a href="#send-command"      class="sidebar-link"><span class="method-dot dot-post"></span>Send Command</a>
+    <a href="#trigger-device"    class="sidebar-link"><span class="method-dot dot-post"></span>Trigger Device</a>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-section-label">Hubs</div>
+    <a href="#register-hub"    class="sidebar-link"><span class="method-dot dot-post"></span>Register Hub</a>
+    <a href="#get-hubs"        class="sidebar-link"><span class="method-dot dot-get"></span>Get Hubs</a>
+    <a href="#get-hub"         class="sidebar-link"><span class="method-dot dot-get"></span>Get Hub</a>
+    <a href="#update-hub"      class="sidebar-link"><span class="method-dot dot-put"></span>Update Hub</a>
+    <a href="#delete-hub"      class="sidebar-link"><span class="method-dot dot-delete"></span>Delete Hub</a>
+    <a href="#hub-devices"     class="sidebar-link"><span class="method-dot dot-get"></span>Hub Devices</a>
+    <a href="#link-device"     class="sidebar-link"><span class="method-dot dot-post"></span>Link Device</a>
+    <a href="#unlink-device"   class="sidebar-link"><span class="method-dot dot-delete"></span>Unlink Device</a>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-section-label">WebSocket</div>
+    <a href="#ws-overview"   class="sidebar-link"><span class="method-dot dot-ws"></span>Overview</a>
+    <a href="#ws-app"        class="sidebar-link"><span class="method-dot dot-ws"></span>App Client Flow</a>
+    <a href="#ws-device"     class="sidebar-link"><span class="method-dot dot-ws"></span>Device Flow</a>
+    <a href="#ws-hub"        class="sidebar-link"><span class="method-dot dot-ws"></span>Hub Flow</a>
+    <a href="#ws-commands"   class="sidebar-link"><span class="method-dot dot-ws"></span>Commands Reference</a>
+  </div>
+</nav>
+
+<!-- ══════════════════ MAIN ══════════════════ -->
+<main id="main">
+
+  <!-- ── HERO ── -->
+  <div class="page-hero" id="overview">
+    <h1>Hubini Cloud API</h1>
+    <p>Full reference for the Hubini backend. Covers every HTTP endpoint and the WebSocket protocol. Read the overview section first before diving into individual endpoints.</p>
+    <div class="base-url-bar">
+      <span>Base URL</span>
+      <strong>https://hubini-homes-kskr.onrender.com</strong>
+    </div>
+    <div class="base-url-bar" style="margin-top:8px">
+      <span>API prefix</span>
+      <strong>/api/v1</strong>
+    </div>
+  </div>
+
+  <!-- ── AUTH FLOW ── -->
+  <div class="section" id="auth-flow">
+    <div class="section-title">Auth Flow</div>
+    <div class="section-desc">Here's how auth works at a high level before you dive into individual endpoints.</div>
+
+    <div class="callout callout-info">
+      <div class="callout-icon">i</div>
+      <div>All protected endpoints need a <strong>Bearer token</strong> in the <code>Authorization</code> header. You get this token from <code>/auth/login</code> or <code>/auth/refresh-token</code>.</div>
+    </div>
+
+    <div class="body-label">Flow</div>
+    <div class="ws-flow">
+      <div class="flow-step">
+        <div class="flow-num">1</div>
+        <div class="flow-content">
+          <div class="flow-label">Register your user account</div>
+          <div class="flow-msg">POST /api/v1/auth/register</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">2</div>
+        <div class="flow-content">
+          <div class="flow-label">Verify email (token comes from the registration email)</div>
+          <div class="flow-msg">POST /api/v1/auth/verify-email  →  { token }</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">3</div>
+        <div class="flow-content">
+          <div class="flow-label">Login and get your tokens</div>
+          <div class="flow-msg">POST /api/v1/auth/login  →  returns { accessToken, refreshToken }</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">4</div>
+        <div class="flow-content">
+          <div class="flow-label">Use the access token on every protected request</div>
+          <div class="flow-msg">Authorization: Bearer &lt;accessToken&gt;</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">5</div>
+        <div class="flow-content">
+          <div class="flow-label">When access token expires, swap the refresh token for a new pair</div>
+          <div class="flow-msg">POST /api/v1/auth/refresh-token  →  { refreshToken }  →  new tokens</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout callout-warn" style="margin-top:14px">
+      <div class="callout-icon">!</div>
+      <div>Access tokens expire based on <code>JWT_EXPIRES_IN</code> env (default 7d). Refresh tokens last 30d and <strong>rotate on use</strong> — the old one is immediately revoked when you call refresh-token.</div>
+    </div>
+  </div>
+
+  <!-- ── RESPONSE SHAPE ── -->
+  <div class="section" id="response-shape">
+    <div class="section-title">Response Shape</div>
+    <div class="section-desc">Every endpoint returns JSON with the same wrapper. Here's what to expect:</div>
+
+    <div class="body-label">Success</div>
+    <div class="code-wrap">
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+      <pre>{
+  <span class="json-key">"success"</span>: <span class="json-bool">true</span>,
+  <span class="json-key">"message"</span>: <span class="json-str">"..."</span>,
+  <span class="json-key">"data"</span>: { <span class="json-comment">// present when there's something to return</span> },
+  <span class="json-key">"timestamp"</span>: <span class="json-str">"2025-05-13T10:30:00.000Z"</span>
+}</pre>
+    </div>
+
+    <div class="body-label">Error</div>
+    <div class="code-wrap">
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+      <pre>{
+  <span class="json-key">"success"</span>: <span class="json-bool">false</span>,
+  <span class="json-key">"message"</span>: <span class="json-str">"Something went wrong"</span>,
+  <span class="json-key">"errorCode"</span>: <span class="json-str">"EMAIL_EXISTS"</span>, <span class="json-comment">// machine-readable, use for i18n / logic</span>
+  <span class="json-key">"timestamp"</span>: <span class="json-str">"2025-05-13T10:30:00.000Z"</span>
+}</pre>
+    </div>
+
+    <div class="body-label">Paginated</div>
+    <div class="code-wrap">
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+      <pre>{
+  <span class="json-key">"success"</span>: <span class="json-bool">true</span>,
+  <span class="json-key">"message"</span>: <span class="json-str">"Success"</span>,
+  <span class="json-key">"data"</span>: [ <span class="json-comment">/* array of items */</span> ],
+  <span class="json-key">"meta"</span>: {
+    <span class="json-key">"pagination"</span>: {
+      <span class="json-key">"page"</span>: <span class="json-num">1</span>,
+      <span class="json-key">"limit"</span>: <span class="json-num">10</span>,
+      <span class="json-key">"total"</span>: <span class="json-num">47</span>,
+      <span class="json-key">"totalPages"</span>: <span class="json-num">5</span>,
+      <span class="json-key">"hasNextPage"</span>: <span class="json-bool">true</span>,
+      <span class="json-key">"hasPrevPage"</span>: <span class="json-bool">false</span>
+    }
+  },
+  <span class="json-key">"timestamp"</span>: <span class="json-str">"2025-05-13T10:30:00.000Z"</span>
+}</pre>
+    </div>
+
+    <div class="body-label">Validation Error (422)</div>
+    <div class="code-wrap">
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+      <pre>{
+  <span class="json-key">"success"</span>: <span class="json-bool">false</span>,
+  <span class="json-key">"message"</span>: <span class="json-str">"Validation failed"</span>,
+  <span class="json-key">"errors"</span>: [
+    { <span class="json-key">"field"</span>: <span class="json-str">"email"</span>, <span class="json-key">"message"</span>: <span class="json-str">"Invalid email format"</span>, <span class="json-key">"value"</span>: <span class="json-str">"notanemail"</span> }
+  ],
+  <span class="json-key">"timestamp"</span>: <span class="json-str">"..."</span>
+}</pre>
+    </div>
+  </div>
+
+  <hr class="divider" />
+
+  <!-- ═══════════════════════════════════════════
+       AUTH ENDPOINTS
+  ════════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-title">Auth</div>
+    <div class="section-desc">Register, login, token management. Most of these are public — no token needed.</div>
+
+    <!-- REGISTER -->
+    <div class="endpoint" id="register">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-badge badge-post">POST</span>
+        <span class="endpoint-path">/api/v1/auth/register</span>
+        <span class="endpoint-desc">Create a new account</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="callout callout-info" style="margin-top:12px">
+          <div class="callout-icon">i</div>
+          <div>Rate limited. After registering, the user gets a verification email. They can't use the platform until they verify.</div>
+        </div>
+        <div class="body-label">Request Body</div>
+        <table class="params-table">
+          <tr><th>Field</th><th>Type</th><th>Required</th><th>Notes</th></tr>
+          <tr><td class="param-name">email</td><td class="param-type">string</td><td class="param-req">required</td><td class="param-desc">Valid email, gets normalized</td></tr>
+          <tr><td class="param-name">username</td><td class="param-type">string</td><td class="param-req">required</td><td class="param-desc">3–50 chars, letters/numbers/underscores only</td></tr>
+          <tr><td class="param-name">password</td><td class="param-type">string</td><td class="param-req">required</td><td class="param-desc">Min 8 chars</td></tr>
+          <tr><td class="param-name">firstName</td><td class="param-type">string</td><td class="param-opt">optional</td><td class="param-desc">Max 100 chars</td></tr>
+          <tr><td class="param-name">lastName</td><td class="param-type">string</td><td class="param-opt">optional</td><td class="param-desc">Max 100 chars</td></tr>
+        </table>
+        <div class="body-label">Example Request</div>
+        <div class="code-wrap">
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          <pre>{
+  <span class="json-key">"email"</span>: <span class="json-str">"john@example.com"</span>,
+  <span class="json-key">"username"</span>: <span class="json-str">"john_doe"</span>,
+  <span class="json-key">"password"</span>: <span class="json-str">"securepass123"</span>,
+  <span class="json-key">"firstName"</span>: <span class="json-str">"John"</span>,
+  <span class="json-key">"lastName"</span>: <span class="json-str">"Doe"</span>
+}</pre>
+        </div>
+        <div class="body-label">Response — 201 Created</div>
+        <div class="code-wrap">
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          <pre>{
+  <span class="json-key">"success"</span>: <span class="json-bool">true</span>,
+  <span class="json-key">"message"</span>: <span class="json-str">"Registration successful"</span>,
+  <span class="json-key">"data"</span>: {
+    <span class="json-key">"userId"</span>: <span class="json-num">42</span>,
+    <span class="json-key">"email"</span>: <span class="json-str">"john@example.com"</span>,
+    <span class="json-key">"username"</span>: <span class="json-str">"john_doe"</span>
+  }
+}</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- LOGIN -->
+    <div class="endpoint" id="login">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-badge badge-post">POST</span>
+        <span class="endpoint-path">/api/v1/auth/login</span>
+        <span class="endpoint-desc">Get access + refresh tokens</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="callout callout-warn" style="margin-top:12px">
+          <div class="callout-icon">!</div>
+          <div>Rate limited. The access token is what goes in the <code>Authorization</code> header for all protected calls. Store the refresh token somewhere safe — you'll need it later.</div>
+        </div>
+        <div class="body-label">Request Body</div>
+        <table class="params-table">
+          <tr><th>Field</th><th>Type</th><th>Required</th><th>Notes</th></tr>
+          <tr><td class="param-name">email</td><td class="param-type">string</td><td class="param-req">required</td><td class="param-desc"></td></tr>
+          <tr><td class="param-name">password</td><td class="param-type">string</td><td class="param-req">required</td><td class="param-desc"></td></tr>
+        </table>
+        <div class="body-label">Response — 200 OK</div>
+        <div class="code-wrap">
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          <pre>{
+  <span class="json-key">"success"</span>: <span class="json-bool">true</span>,
+  <span class="json-key">"data"</span>: {
+    <span class="json-key">"user"</span>: {
+      <span class="json-key">"id"</span>: <span class="json-num">42</span>,
+      <span class="json-key">"email"</span>: <span class="json-str">"john@example.com"</span>,
+      <span class="json-key">"username"</span>: <span class="json-str">"john_doe"</span>,
+      <span class="json-key">"firstName"</span>: <span class="json-str">"John"</span>,
+      <span class="json-key">"lastName"</span>: <span class="json-str">"Doe"</span>,
+      <span class="json-key">"isVerified"</span>: <span class="json-bool">true</span>
+    },
+    <span class="json-key">"tokens"</span>: {
+      <span class="json-key">"accessToken"</span>: <span class="json-str">"eyJhbG..."</span>,
+      <span class="json-key">"refreshToken"</span>: <span class="json-str">"eyJhbG..."</span>,
+      <span class="json-key">"expiresIn"</span>: <span class="json-str">"7d"</span>
+    }
+  }
+}</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- VERIFY EMAIL -->
+    <div class="endpoint" id="verify-email">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-badge badge-post">POST</span>
+        <span class="endpoint-path">/api/v1/auth/verify-email</span>
+        <span class="endpoint-desc">Verify email with token from email</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="body-label" style="margin-top:12px">Request Body</div>
+        <table class="params-table">
+          <tr><th>Field</th><th>Type</th><th>Required</th><th>Notes</th></tr>
+          <tr><td class="param-name">token</td><td class="param-type">string</td><td class="param-req">required</td><td class="param-desc">The token from the verification email link. Expires in 24h.</td></tr>
+        </table>
+        <div class="body-label">Response — 200 OK</div>
+        <div class="code-wrap">
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          <pre>{ <span class="json-key">"success"</span>: <span class="json-bool">true</span>, <span class="json-key">"data"</span>: { <span class="json-key">"message"</span>: <span class="json-str">"Email verified successfully"</span> } }</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- RESEND VERIFICATION -->
+    <div class="endpoint" id="resend-verification">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-badge badge-post">POST</span>
+        <span class="endpoint-path">/api/v1/auth/resend-verification</span>
+        <span class="endpoint-desc">Resend the verification email</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="callout callout-warn" style="margin-top:12px">
+          <div class="callout-icon">!</div>
+          <div>Email sending is not wired up yet on the backend (marked TODO). This endpoint returns success regardless, but no email is actually sent right now.</div>
+        </div>
+        <div class="body-label">Request Body</div>
+        <table class="params-table">
+          <tr><th>Field</th><th>Type</th><th>Required</th></tr>
+          <tr><td class="param-name">email</td><td class="param-type">string</td><td class="param-req">required</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- FORGOT PASSWORD -->
+    <div class="endpoint" id="forgot-password">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-badge badge-post">POST</span>
+        <span class="endpoint-path">/api/v1/auth/forgot-password</span>
+        <span class="endpoint-desc">Request a password reset link</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="callout callout-info" style="margin-top:12px">
+          <div class="callout-icon">i</div>
+          <div>Always returns the same success message regardless of whether the email exists — prevents email enumeration. Rate limited.</div>
+        </div>
+        <div class="body-label">Request Body</div>
+        <table class="params-table">
+          <tr><th>Field</th><th>Type</th><th>Required</th></tr>
+          <tr><td class="param-name">email</td><td class="param-type">string</td><td class="param-req">required</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- RESET PASSWORD -->
+    <div class="endpoint" id="reset-password">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-badge badge-post">POST</span>
+        <span class="endpoint-path">/api/v1/auth/reset-password</span>
+        <span class="endpoint-desc">Set a new password using reset token</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="body-label" style="margin-top:12px">Request Body</div>
+        <table class="params-table">
+          <tr><th>Field</th><th>Type</th><th>Required</th><th>Notes</th></tr>
+          <tr><td class="param-name">token</td><td class="param-type">string</td><td class="param-req">required</td><td class="param-desc">From the reset email. Expires in 1 hour.</td></tr>
+          <tr><td class="param-name">password</td><td class="param-type">string</td><td class="param-req">required</td><td class="param-desc">New password, min 8 chars</td></tr>
+        </table>
+        <div class="callout callout-info" style="margin-top:12px">
+          <div class="callout-icon">i</div>
+          <div>All active refresh tokens for that user get revoked on success — forces re-login everywhere.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- REFRESH TOKEN -->
+    <div class="endpoint" id="refresh-token">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-badge badge-post">POST</span>
+        <span class="endpoint-path">/api/v1/auth/refresh-token</span>
+        <span class="endpoint-desc">Swap refresh token for new token pair</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="body-label" style="margin-top:12px">Request Body</div>
+        <table class="params-table">
+          <tr><th>Field</th><th>Type</th><th>Required</th></tr>
+          <tr><td class="param-name">refreshToken</td><td class="param-type">string</td><td class="param-req">required</td></tr>
+        </table>
+        <div class="body-label">Response — 200 OK</div>
+        <div class="code-wrap">
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          <pre>{
+  <span class="json-key">"data"</span>: {
+    <span class="json-key">"accessToken"</span>: <span class="json-str">"eyJhbG..."</span>,
+    <span class="json-key">"refreshToken"</span>: <span class="json-str">"eyJhbG..."</span>, <span class="json-comment">// NEW token — old one is dead now</span>
+    <span class="json-key">"expiresIn"</span>: <span class="json-str">"7d"</span>
+  }
+}</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- ME -->
+    <div class="endpoint" id="me">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-badge badge-get">GET</span>
+        <span class="endpoint-path">/api/v1/auth/me</span>
+        <span class="endpoint-desc">Who am I? <span class="lock-icon">auth</span></span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="body-note">Protected. Returns the user object from the JWT — no DB hit for the data, just what's already in the token payload.</div>
+        <div class="body-label">Response — 200 OK</div>
+        <div class="code-wrap">
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          <pre>{
+  <span class="json-key">"data"</span>: {
+    <span class="json-key">"user"</span>: {
+      <span class="json-key">"id"</span>: <span class="json-num">42</span>,
+      <span class="json-key">"email"</span>: <span class="json-str">"john@example.com"</span>,
+      <span class="json-key">"username"</span>: <span class="json-str">"john_doe"</span>,
+      <span class="json-key">"isVerified"</span>: <span class="json-bool">true</span>
+    }
+  }
+}</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- LOGOUT -->
+    <div class="endpoint" id="logout">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-badge badge-post">POST</span>
+        <span class="endpoint-path">/api/v1/auth/logout</span>
+        <span class="endpoint-desc">Revoke current refresh token <span class="lock-icon">auth</span></span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="body-label" style="margin-top:12px">Request Body</div>
+        <table class="params-table">
+          <tr><th>Field</th><th>Type</th><th>Required</th><th>Notes</th></tr>
+          <tr><td class="param-name">refreshToken</td><td class="param-type">string</td><td class="param-opt">optional</td><td class="param-desc">If provided, that specific token gets revoked</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- LOGOUT ALL -->
+    <div class="endpoint" id="logout-all">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-badge badge-post">POST</span>
+        <span class="endpoint-path">/api/v1/auth/logout-all</span>
+        <span class="endpoint-desc">Revoke ALL refresh tokens for this user <span class="lock-icon">auth</span></span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="body-note">No body needed. Kills all active sessions across every device. Good for "suspicious activity" flows.</div>
+      </div>
+    </div>
+
+    <!-- CHANGE PASSWORD -->
+    <div class="endpoint" id="change-password">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-badge badge-post">POST</span>
+        <span class="endpoint-path">/api/v1/auth/change-password</span>
+        <span class="endpoint-desc">Change password while logged in <span class="lock-icon">auth</span></span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="body-label" style="margin-top:12px">Request Body</div>
+        <table class="params-table">
+          <tr><th>Field</th><th>Type</th><th>Required</th></tr>
+          <tr><td class="param-name">currentPassword</td><td class="param-type">string</td><td class="param-req">required</td></tr>
+          <tr><td class="param-name">newPassword</td><td class="param-type">string</td><td class="param-req">required — min 8 chars</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider" />
+
+  <!-- ═══════════════════════════════════════════
+       USER ENDPOINTS
+  ════════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-title">Users</div>
+    <div class="section-desc">All user routes require the <code>Authorization: Bearer &lt;token&gt;</code> header.</div>
+
+    <!-- GET PROFILE -->
+    <div class="endpoint" id="get-profile">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-badge badge-get">GET</span>
+        <span class="endpoint-path">/api/v1/users/profile</span>
+        <span class="endpoint-desc">Get full profile <span class="lock-icon">auth</span></span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="body-label" style="margin-top:12px">Response — 200 OK</div>
+        <div class="code-wrap">
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          <pre>{
+  <span class="json-key">"data"</span>: {
+    <span class="json-key">"id"</span>: <span class="json-num">42</span>,
+    <span class="json-key">"email"</span>: <span class="json-str">"john@example.com"</span>,
+    <span class="json-key">"username"</span>: <span class="json-str">"john_doe"</span>,
+    <span class="json-key">"firstName"</span>: <span class="json-str">"John"</span>,
+    <span class="json-key">"lastName"</span>: <span class="json-str">"Doe"</span>,
+    <span class="json-key">"dateOfBirth"</span>: <span class="json-null">null</span>,
+    <span class="json-key">"phone"</span>: <span class="json-null">null</span>,
+    <span class="json-key">"profilePicture"</span>: <span class="json-null">null</span>,
+    <span class="json-key">"isVerified"</span>: <span class="json-bool">true</span>,
+    <span class="json-key">"createdAt"</span>: <span class="json-str">"2025-05-01T12:00:00.000Z"</span>,
+    <span class="json-key">"lastLogin"</span>: <span class="json-str">"2025-05-13T10:00:00.000Z"</span>
+  }
+}</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- UPDATE PROFILE -->
+    <div class="endpoint" id="update-profile">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-badge badge-put">PUT</span>
+        <span class="endpoint-path">/api/v1/users/profile</span>
+        <span class="endpoint-desc">Update profile fields <span class="lock-icon">auth</span></span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="body-note">All fields are optional — only send what's changing. Returns the full updated profile.</div>
+        <div class="body-label">Request Body</div>
+        <table class="params-table">
+          <tr><th>Field</th><th>Type</th><th>Notes</th></tr>
+          <tr><td class="param-name">firstName</td><td class="param-type">string</td><td class="param-desc">Max 100 chars</td></tr>
+          <tr><td class="param-name">lastName</td><td class="param-type">string</td><td class="param-desc">Max 100 chars</td></tr>
+          <tr><td class="param-name">phone</td><td class="param-type">string</td><td class="param-desc">Max 20 chars</td></tr>
+          <tr><td class="param-name">dateOfBirth</td><td class="param-type">string</td><td class="param-desc">ISO 8601 format e.g. <code>2000-01-15</code></td></tr>
+          <tr><td class="param-name">profilePicture</td><td class="param-type">string</td><td class="param-desc">URL string</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- STATS -->
+    <div class="endpoint" id="get-stats">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-badge badge-get">GET</span>
+        <span class="endpoint-path">/api/v1/users/stats</span>
+        <span class="endpoint-desc">Device/hub/command summary <span class="lock-icon">auth</span></span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="body-label" style="margin-top:12px">Response — 200 OK</div>
+        <div class="code-wrap">
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          <pre>{
+  <span class="json-key">"data"</span>: {
+    <span class="json-key">"devices"</span>: { <span class="json-key">"total"</span>: <span class="json-num">5</span>, <span class="json-key">"online"</span>: <span class="json-num">3</span> },
+    <span class="json-key">"hubs"</span>:    { <span class="json-key">"total"</span>: <span class="json-num">2</span>, <span class="json-key">"online"</span>: <span class="json-num">1</span> },
+    <span class="json-key">"commands"</span>: { <span class="json-key">"last24Hours"</span>: <span class="json-num">18</span> }
+  }
+}</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- ACTIVITY -->
+    <div class="endpoint" id="get-activity">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-badge badge-get">GET</span>
+        <span class="endpoint-path">/api/v1/users/activity</span>
+        <span class="endpoint-desc">Paginated activity log <span class="lock-icon">auth</span></span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="body-label" style="margin-top:12px">Query Params</div>
+        <table class="params-table">
+          <tr><th>Param</th><th>Type</th><th>Default</th></tr>
+          <tr><td class="param-name">page</td><td class="param-type">number</td><td>1</td></tr>
+          <tr><td class="param-name">limit</td><td class="param-type">number</td><td>10</td></tr>
+        </table>
+        <div class="body-label">Response — 200 OK (paginated)</div>
+        <div class="code-wrap">
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          <pre>{
+  <span class="json-key">"data"</span>: [
+    {
+      <span class="json-key">"id"</span>: <span class="json-num">1</span>,
+      <span class="json-key">"action"</span>: <span class="json-str">"device_command"</span>,
+      <span class="json-key">"details"</span>: <span class="json-str">"Sent ON to light-01"</span>,
+      <span class="json-key">"deviceName"</span>: <span class="json-str">"Living Room Light"</span>,
+      <span class="json-key">"hubName"</span>: <span class="json-null">null</span>,
+      <span class="json-key">"ipAddress"</span>: <span class="json-str">"102.89.x.x"</span>,
+      <span class="json-key">"createdAt"</span>: <span class="json-str">"2025-05-13T09:10:00.000Z"</span>
+    }
+  ],
+  <span class="json-key">"meta"</span>: { <span class="json-comment">/* pagination */</span> }
+}</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- DEACTIVATE -->
+    <div class="endpoint" id="deactivate">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-badge badge-post">POST</span>
+        <span class="endpoint-path">/api/v1/users/deactivate</span>
+        <span class="endpoint-desc">Disable account (reversible) <span class="lock-icon">auth</span></span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="body-note">Sets <code>is_active = false</code> and revokes all refresh tokens. The account still exists in the DB. No request body needed.</div>
+      </div>
+    </div>
+
+    <!-- DELETE ACCOUNT -->
+    <div class="endpoint" id="delete-account">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-badge badge-delete">DELETE</span>
+        <span class="endpoint-path">/api/v1/users/account</span>
+        <span class="endpoint-desc">Permanently delete account <span class="lock-icon">auth</span></span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="callout callout-error" style="margin-top:12px">
+          <div class="callout-icon">!</div>
+          <div>This is permanent. The user row gets deleted from the DB. Make sure you confirm this in the UI before calling it.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider" />
+
+  <!-- ═══════════════════════════════════════════
+       DEVICE ENDPOINTS
+  ════════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-title">Devices</div>
+    <div class="section-desc">All device routes require auth. Devices are registered first via HTTP, then they connect via WebSocket using their DB integer ID.</div>
+
+    <div class="callout callout-info">
+      <div class="callout-icon">i</div>
+      <div><strong>Activation window:</strong> After you register a device via HTTP, it has <strong>~1000 seconds</strong> to connect via WebSocket (<code>mews|&lt;id&gt;</code>). If it doesn't connect in time, it gets auto-deleted from the DB.</div>
+    </div>
+
+    <!-- REGISTER DEVICE -->
+    <div class="endpoint" id="register-device">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-badge badge-post">POST</span>
+        <span class="endpoint-path">/api/v1/devices</span>
+        <span class="endpoint-desc">Register a new device <span class="lock-icon">auth</span></span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="body-label" style="margin-top:12px">Request Body</div>
+        <table class="params-table">
+          <tr><th>Field</th><th>Type</th><th>Required</th><th>Notes</th></tr>
+          <tr><td class="param-name">Local_ID</td><td class="param-type">string</td><td class="param-req">required</td><td class="param-desc">The device's local identifier (e.g., from the hardware). Must be unique per user.</td></tr>
+          <tr><td class="param-name">Name</td><td class="param-type">string</td><td class="param-req">required</td><td class="param-desc">Human-readable name. Max 100 chars.</td></tr>
+          <tr><td class="param-name">Type</td><td class="param-type">string</td><td class="param-req">required</td><td class="param-desc">Device category (e.g., <code>light</code>, <code>sensor</code>). Max 50 chars.</td></tr>
+          <tr><td class="param-name">Model</td><td class="param-type">string</td><td class="param-req">required</td><td class="param-desc">Hardware model. Max 50 chars.</td></tr>
+          <tr><td class="param-name">trigs</td><td class="param-type">string</td><td class="param-opt">optional</td><td class="param-desc">Trigger config string. Max 255 chars.</td></tr>
+        </table>
+        <div class="body-label">Example Request</div>
+        <div class="code-wrap">
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          <pre>{
+  <span class="json-key">"Local_ID"</span>: <span class="json-str">"ESP32-A1B2"</span>,
+  <span class="json-key">"Name"</span>: <span class="json-str">"Living Room Light"</span>,
+  <span class="json-key">"Type"</span>: <span class="json-str">"light"</span>,
+  <span class="json-key">"Model"</span>: <span class="json-str">"ESP32-WROOM"</span>,
+  <span class="json-key">"trigs"</span>: <span class="json-str">"motion:on,timer:off"</span>
+}</pre>
+        </div>
+        <div class="body-label">Response — 201 Created</div>
+        <div class="code-wrap">
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          <pre>{
+  <span class="json-key">"data"</span>: {
+    <span class="json-key">"id"</span>: <span class="json-num">7</span>,           <span class="json-comment">// DB integer ID — use this for WS: mews|7</span>
+    <span class="json-key">"yourCloudID"</span>: <span class="json-str">"DEV-a1b2c3d4e5f6"</span>  <span class="json-comment">// Unique cloud ID</span>
+  }
+}</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- GET DEVICES -->
+    <div class="endpoint" id="get-devices">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-badge badge-get">GET</span>
+        <span class="endpoint-path">/api/v1/devices</span>
+        <span class="endpoint-desc">List all devices (paginated) <span class="lock-icon">auth</span></span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="body-label" style="margin-top:12px">Query Params</div>
+        <table class="params-table">
+          <tr><th>Param</th><th>Type</th><th>Notes</th></tr>
+          <tr><td class="param-name">page</td><td class="param-type">number</td><td class="param-desc">Default 1</td></tr>
+          <tr><td class="param-name">limit</td><td class="param-type">number</td><td class="param-desc">Default 10</td></tr>
+          <tr><td class="param-name">type</td><td class="param-type">string</td><td class="param-desc">Filter by device type</td></tr>
+          <tr><td class="param-name">search</td><td class="param-type">string</td><td class="param-desc">Searches name and local_id</td></tr>
+        </table>
+        <div class="body-label">Response — 200 OK</div>
+        <div class="code-wrap">
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          <pre>{
+  <span class="json-key">"data"</span>: [
+    {
+      <span class="json-key">"id"</span>: <span class="json-num">7</span>,
+      <span class="json-key">"cloudId"</span>: <span class="json-str">"DEV-a1b2c3d4e5f6"</span>,
+      <span class="json-key">"Local_ID"</span>: <span class="json-str">"ESP32-A1B2"</span>,
+      <span class="json-key">"name"</span>: <span class="json-str">"Living Room Light"</span>,
+      <span class="json-key">"type"</span>: <span class="json-str">"light"</span>,
+      <span class="json-key">"model"</span>: <span class="json-str">"ESP32-WROOM"</span>,
+      <span class="json-key">"Trigs"</span>: <span class="json-str">"motion:on,timer:off"</span>,
+      <span class="json-key">"Last_state"</span>: <span class="json-str">"on"</span>,
+      <span class="json-key">"isOnline"</span>: <span class="json-bool">true</span>,
+      <span class="json-key">"lastSeen"</span>: <span class="json-str">"2025-05-13T10:00:00.000Z"</span>,
+      <span class="json-key">"createdAt"</span>: <span class="json-str">"2025-05-01T08:00:00.000Z"</span>
+    }
+  ],
+  <span class="json-key">"meta"</span>: { <span class="json-comment">/* pagination */</span> }
+}</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- GET DEVICES CLIENT -->
+    <div class="endpoint" id="get-devices-client">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-badge badge-get">GET</span>
+        <span class="endpoint-path">/api/v1/devices/client</span>
+        <span class="endpoint-desc">Compact device list for WS-style clients <span class="lock-icon">auth</span></span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="body-note">This is a stripped-down list — same format as the <code>getds</code> WebSocket command but over HTTP. Returns a raw array (no wrapper).</div>
+        <div class="body-label">Response — 200 OK (raw array, no wrapper)</div>
+        <div class="code-wrap">
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          <pre>[
+  {
+    <span class="json-key">"id"</span>: <span class="json-str">"7"</span>,
+    <span class="json-key">"Local_ID"</span>: <span class="json-str">"ESP32-A1B2"</span>,
+    <span class="json-key">"name"</span>: <span class="json-str">"Living Room Light"</span>,
+    <span class="json-key">"type"</span>: <span class="json-str">"light"</span>,
+    <span class="json-key">"Last_state"</span>: <span class="json-str">"on"</span>,
+    <span class="json-key">"Trigs"</span>: <span class="json-str">"motion:on"</span>
+  }
+]</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- GET DEVICE -->
+    <div class="endpoint" id="get-device">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-badge badge-get">GET</span>
+        <span class="endpoint-path">/api/v1/devices/:deviceId</span>
+        <span class="endpoint-desc">Get one device by ID <span class="lock-icon">auth</span></span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="body-note"><code>deviceId</code> is the DB integer ID. Same object shape as the list endpoint, plus <code>updatedAt</code>.</div>
+      </div>
+    </div>
+
+    <!-- UPDATE DEVICE -->
+    <div class="endpoint" id="update-device">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-badge badge-put">PUT</span>
+        <span class="endpoint-path">/api/v1/devices/:deviceId</span>
+        <span class="endpoint-desc">Update device metadata <span class="lock-icon">auth</span></span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="body-label" style="margin-top:12px">Request Body (all optional)</div>
+        <table class="params-table">
+          <tr><th>Field</th><th>Type</th><th>Notes</th></tr>
+          <tr><td class="param-name">Name</td><td class="param-type">string</td><td class="param-desc">Max 100 chars</td></tr>
+          <tr><td class="param-name">Type</td><td class="param-type">string</td><td class="param-desc">Max 50 chars</td></tr>
+          <tr><td class="param-name">trigs</td><td class="param-type">string</td><td class="param-desc">Max 255 chars</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- DELETE DEVICE -->
+    <div class="endpoint" id="delete-device">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-badge badge-delete">DELETE</span>
+        <span class="endpoint-path">/api/v1/devices/:deviceId</span>
+        <span class="endpoint-desc">Delete a device <span class="lock-icon">auth</span></span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="body-note">Removes the device from the DB. If it's currently connected via WebSocket, it'll stay connected until it disconnects but won't be in the DB anymore.</div>
+      </div>
+    </div>
+
+    <!-- SEND COMMAND -->
+    <div class="endpoint" id="send-command">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-badge badge-post">POST</span>
+        <span class="endpoint-path">/api/v1/devices/:deviceId/command</span>
+        <span class="endpoint-desc">Send a command to a device over HTTP <span class="lock-icon">auth</span></span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="callout callout-info" style="margin-top:12px">
+          <div class="callout-icon">i</div>
+          <div>This routes the command through the WebSocket manager internally. The device must be <strong>online and connected via WS</strong> for this to work. Rate limited. The command gets logged in <code>device_commands</code>. Since this is HTTP-originated, the <code>appId</code> is always <code>-</code> — no WS session to respond to.</div>
+        </div>
+        <div class="body-label">Request Body</div>
+        <table class="params-table">
+          <tr><th>Field</th><th>Type</th><th>Required</th><th>Notes</th></tr>
+          <tr><td class="param-name">command</td><td class="param-type">string</td><td class="param-req">required</td><td class="param-desc">The command string sent to the device. Max 255 chars.</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- TRIGGER DEVICE -->
+    <div class="endpoint" id="trigger-device">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-badge badge-post">POST</span>
+        <span class="endpoint-path">/api/v1/devices/:deviceId/trigger</span>
+        <span class="endpoint-desc">Fire a trigger on a device <span class="lock-icon">auth</span></span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="body-label" style="margin-top:12px">Request Body</div>
+        <table class="params-table">
+          <tr><th>Field</th><th>Type</th><th>Required</th></tr>
+          <tr><td class="param-name">trigger</td><td class="param-type">string</td><td class="param-req">required</td></tr>
+        </table>
+        <div class="body-note">Same mechanics as <code>/command</code> — goes via WS, device must be online. Rate limited.</div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider" />
+
+  <!-- ═══════════════════════════════════════════
+       HUB ENDPOINTS
+  ════════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-title">Hubs</div>
+    <div class="section-desc">Hubs are gateway devices that manage multiple IoT nodes. Same auth requirement as devices. Hubs also have a ~1000s activation window after registration.</div>
+
+    <!-- REGISTER HUB -->
+    <div class="endpoint" id="register-hub">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-badge badge-post">POST</span>
+        <span class="endpoint-path">/api/v1/hubs</span>
+        <span class="endpoint-desc">Register a new hub <span class="lock-icon">auth</span></span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="body-label" style="margin-top:12px">Request Body</div>
+        <table class="params-table">
+          <tr><th>Field</th><th>Type</th><th>Required</th><th>Notes</th></tr>
+          <tr><td class="param-name">hubToken</td><td class="param-type">string</td><td class="param-req">required</td><td class="param-desc">Unique token that identifies this hub hardware. Must be unique per user.</td></tr>
+          <tr><td class="param-name">hubName</td><td class="param-type">string</td><td class="param-req">required</td><td class="param-desc">Human-readable name. Max 100 chars.</td></tr>
+          <tr><td class="param-name">type</td><td class="param-type">string</td><td class="param-req">required</td><td class="param-desc">Max 50 chars</td></tr>
+          <tr><td class="param-name">model</td><td class="param-type">string</td><td class="param-req">required</td><td class="param-desc">Max 50 chars</td></tr>
+        </table>
+        <div class="body-label">Response — 201 Created</div>
+        <div class="code-wrap">
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          <pre>{
+  <span class="json-key">"data"</span>: {
+    <span class="json-key">"id"</span>: <span class="json-num">3</span>,                         <span class="json-comment">// DB integer ID — use for WS: mewh|3</span>
+    <span class="json-key">"your_cloudID"</span>: <span class="json-str">"HUB-x9y8z7w6v5u4"</span>
+  }
+}</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- GET HUBS -->
+    <div class="endpoint" id="get-hubs">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-badge badge-get">GET</span>
+        <span class="endpoint-path">/api/v1/hubs</span>
+        <span class="endpoint-desc">List all hubs (paginated) <span class="lock-icon">auth</span></span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="body-label" style="margin-top:12px">Query Params</div>
+        <table class="params-table">
+          <tr><th>Param</th><th>Default</th></tr>
+          <tr><td class="param-name">page</td><td>1</td></tr>
+          <tr><td class="param-name">limit</td><td>10</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- GET HUB -->
+    <div class="endpoint" id="get-hub">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-badge badge-get">GET</span>
+        <span class="endpoint-path">/api/v1/hubs/:hubId</span>
+        <span class="endpoint-desc">Get one hub <span class="lock-icon">auth</span></span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="body-label" style="margin-top:12px">Response</div>
+        <div class="code-wrap">
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          <pre>{
+  <span class="json-key">"data"</span>: {
+    <span class="json-key">"id"</span>: <span class="json-num">3</span>,
+    <span class="json-key">"cloudId"</span>: <span class="json-str">"HUB-x9y8z7w6v5u4"</span>,
+    <span class="json-key">"hubToken"</span>: <span class="json-str">"my-hub-token"</span>,
+    <span class="json-key">"hubName"</span>: <span class="json-str">"Main Hub"</span>,
+    <span class="json-key">"type"</span>: <span class="json-str">"gateway"</span>,
+    <span class="json-key">"model"</span>: <span class="json-str">"RaspberryPi4"</span>,
+    <span class="json-key">"isOnline"</span>: <span class="json-bool">true</span>,
+    <span class="json-key">"lastSeen"</span>: <span class="json-str">"2025-05-13T10:00:00.000Z"</span>,
+    <span class="json-key">"createdAt"</span>: <span class="json-str">"2025-05-01T08:00:00.000Z"</span>,
+    <span class="json-key">"updatedAt"</span>: <span class="json-str">"2025-05-10T14:00:00.000Z"</span>
+  }
+}</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- UPDATE HUB -->
+    <div class="endpoint" id="update-hub">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-badge badge-put">PUT</span>
+        <span class="endpoint-path">/api/v1/hubs/:hubId</span>
+        <span class="endpoint-desc">Update hub metadata <span class="lock-icon">auth</span></span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="body-label" style="margin-top:12px">Request Body (all optional)</div>
+        <table class="params-table">
+          <tr><th>Field</th><th>Type</th></tr>
+          <tr><td class="param-name">hubName</td><td class="param-type">string</td></tr>
+          <tr><td class="param-name">type</td><td class="param-type">string</td></tr>
+          <tr><td class="param-name">model</td><td class="param-type">string</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- DELETE HUB -->
+    <div class="endpoint" id="delete-hub">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-badge badge-delete">DELETE</span>
+        <span class="endpoint-path">/api/v1/hubs/:hubId</span>
+        <span class="endpoint-desc">Delete a hub <span class="lock-icon">auth</span></span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="body-note">Deletes the hub and automatically unlinks all devices that were attached to it (sets <code>hub_id = null</code> on those devices). Devices themselves are not deleted.</div>
+      </div>
+    </div>
+
+    <!-- HUB DEVICES -->
+    <div class="endpoint" id="hub-devices">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-badge badge-get">GET</span>
+        <span class="endpoint-path">/api/v1/hubs/:hubId/devices</span>
+        <span class="endpoint-desc">Get all devices linked to this hub <span class="lock-icon">auth</span></span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="body-note">Returns a flat array (not paginated) of devices currently linked to the hub.</div>
+      </div>
+    </div>
+
+    <!-- LINK DEVICE -->
+    <div class="endpoint" id="link-device">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-badge badge-post">POST</span>
+        <span class="endpoint-path">/api/v1/hubs/:hubId/devices/:deviceId</span>
+        <span class="endpoint-desc">Link a device to a hub <span class="lock-icon">auth</span></span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="body-note">No request body needed. Both <code>hubId</code> and <code>deviceId</code> must belong to the authenticated user. Sets <code>hub_id</code> on the device row.</div>
+      </div>
+    </div>
+
+    <!-- UNLINK DEVICE -->
+    <div class="endpoint" id="unlink-device">
+      <div class="endpoint-header" onclick="toggle(this)">
+        <span class="method-badge badge-delete">DELETE</span>
+        <span class="endpoint-path">/api/v1/hubs/devices/:deviceId</span>
+        <span class="endpoint-desc">Unlink a device from its hub <span class="lock-icon">auth</span></span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="body-note">Sets <code>hub_id = null</code> on the device. The device still exists, it's just no longer attached to any hub.</div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider" />
+
+  <!-- ═══════════════════════════════════════════
+       WEBSOCKET
+  ════════════════════════════════════════════ -->
+  <div class="section" id="ws-overview">
+    <div class="section-title">WebSocket Protocol</div>
+    <div class="section-desc">
+      This is how devices, hubs, and the mobile/web app talk in real time. All messages are plain text, pipe-delimited (<code>|</code>). No JSON here — just simple string frames.
+    </div>
+
+    <div class="base-url-bar">
+      <span>WS URL</span>
+      <strong>wss://hubini-homes-kskr.onrender.com/ws</strong>
+    </div>
+
+    <div class="callout callout-info" style="margin-top:16px">
+      <div class="callout-icon">i</div>
+      <div>
+        There are <strong>3 types of connections</strong>:<br><br>
+        <strong>App</strong> — the mobile/web client. Authenticates with JWT, sends commands, receives responses.<br>
+        <strong>Device</strong> — an IoT node (ESP32, Arduino, etc). Maps with its DB ID, receives commands, sends responses.<br>
+        <strong>Hub</strong> — a gateway (Pi, etc). Maps with its DB ID, signals online/offline.
+      </div>
+    </div>
+  </div>
+
+  <!-- APP FLOW -->
+  <div class="section" id="ws-app">
+    <div class="section-title">App Client Flow</div>
+    <div class="section-desc">For your mobile app or web frontend connecting to the WS server.</div>
+
+    <div class="ws-flow">
+      <div class="flow-step">
+        <div class="flow-num">1</div>
+        <div class="flow-content">
+          <div class="flow-label arrow-to-server">▲ App → Server — Connect, then authenticate</div>
+          <div class="flow-msg">auth|&lt;accessToken&gt;</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">2</div>
+        <div class="flow-content">
+          <div class="flow-label arrow-from-server">▼ Server → App — You get your session's appId</div>
+          <div class="flow-msg">auth|a1b2c3d4e5f6g7h8i9j0</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">3</div>
+        <div class="flow-content">
+          <div class="flow-label arrow-to-server">▲ App → Server — Request device list</div>
+          <div class="flow-msg">getds</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">4</div>
+        <div class="flow-content">
+          <div class="flow-label arrow-from-server">▼ Server → App — Device list (or "empty")</div>
+          <div class="flow-msg">ds|7:ESP32-A1B2:Living Room Light:light:on:motion:on|8:ESP32-C3D4:Fan:fan:off:</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">5</div>
+        <div class="flow-content">
+          <div class="flow-label arrow-to-server">▲ App → Server — Send command to device</div>
+          <div class="flow-msg">c_nd|&lt;dbDeviceId&gt;|&lt;appId&gt;|&lt;todo&gt;|&lt;args&gt;</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">6</div>
+        <div class="flow-content">
+          <div class="flow-label arrow-from-server">▼ Server → App — Device response comes back</div>
+          <div class="flow-msg">r_nd|&lt;cloudId&gt;|&lt;appId&gt;|&lt;respTodo&gt;|&lt;stateData&gt;</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="body-label">Device list format breakdown</div>
+    <div class="code-wrap">
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+      <pre>ds|{id}:{Local_ID}:{name}:{type}:{Last_state}:{trigs}|{id}:...
+
+Example:
+ds|7:ESP32-A1B2:Living Room Light:light:on:motion|8:ESP32-C3D4:Fan:fan:off:
+
+If no devices: ds|empty</pre>
+    </div>
+
+    <div class="body-label">Sending a command — c_nd breakdown</div>
+    <div class="code-wrap">
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+      <pre>c_nd|{dbDeviceId}|{appId}|{todo}|{args}
+
+Example — turn on device #7:
+c_nd|7|a1b2c3d4e5f6g7h8i9j0|toggle|on
+
+Example — no args:
+c_nd|7|a1b2c3d4e5f6g7h8i9j0|status</pre>
+    </div>
+
+    <div class="callout callout-info">
+      <div class="callout-icon">i</div>
+      <div>The <code>appId</code> in the <code>c_nd</code> message should be the one you received from the server after the <code>auth</code> handshake. The server uses it to route the device's response back to <em>your specific session</em>.</div>
+    </div>
+  </div>
+
+  <!-- DEVICE FLOW -->
+  <div class="section" id="ws-device">
+    <div class="section-title">Device Flow</div>
+    <div class="section-desc">For your IoT hardware — ESP32, Arduino, whatever. The device needs its DB integer ID to connect (from the register API call).</div>
+
+    <div class="ws-flow">
+      <div class="flow-step">
+        <div class="flow-num">1</div>
+        <div class="flow-content">
+          <div class="flow-label arrow-to-server">▲ Device → Server — Map yourself with DB id</div>
+          <div class="flow-msg">mews|&lt;dbId&gt;</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">2</div>
+        <div class="flow-content">
+          <div class="flow-label arrow-from-server">▼ Server → Device — Confirmed, your active plan + full plan catalogue</div>
+          <div class="flow-msg">registered|&lt;dbId&gt;|&lt;userPlan&gt;|&lt;devPlan&gt;|basic:0,stellar:2000,premium:5000,prime:8000</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">3</div>
+        <div class="flow-content">
+          <div class="flow-label arrow-from-server">▼ Server → Device — An app sends a command (anytime after step 2)</div>
+          <div class="flow-msg">c_nd|&lt;cloudId&gt;|&lt;appId&gt;|&lt;todo&gt;|&lt;args&gt;</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">4</div>
+        <div class="flow-content">
+          <div class="flow-label arrow-to-server">▲ Device → Server — Execute command and reply</div>
+          <div class="flow-msg">r_nd|&lt;cloudId&gt;|&lt;appId&gt;|&lt;respTodo&gt;|&lt;resultData&gt;|&lt;newState&gt;</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">5</div>
+        <div class="flow-content">
+          <div class="flow-label arrow-to-server">▲ Device → Server — Heartbeat every 30 seconds</div>
+          <div class="flow-msg">ping</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">6</div>
+        <div class="flow-content">
+          <div class="flow-label arrow-from-server">▼ Server → Device — Only if there's queued data (otherwise silence = nothing pending)</div>
+          <div class="flow-msg">pong|&lt;devId&gt;|&lt;cmd&gt;|&lt;data&gt;</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="body-label">registered response — plans field breakdown</div>
+    <div class="code-wrap">
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+      <pre>registered|{dbId}|{userPlan}|{devPlan}|{plans}
+
+plans field format: {tier}:{price_naira},{tier}:{price_naira},...
+
+Current tiers:
+  basic:0          GhostAir Basic   —   0 NGN  (free)
+  stellar:2000     Stellar          —   2,000 NGN/month
+  premium:5000     Premium          —   5,000 NGN/month
+  prime:8000       GhostAir Prime   —   8,000 NGN/month
+
+Example full response:
+registered|7|basic|basic|basic:0,stellar:2000,premium:5000,prime:8000
+
+Parse the plans field by splitting on "," then each entry on ":"
+so your hardware knows the full catalogue without a network call.</pre>
+    </div>
+
+    <div class="body-label">r_nd format (device response)</div>
+    <div class="code-wrap">
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+      <pre>r_nd|{cloudId}|{appId}|{respTodo}|{resultData}|{newState}
+
+Where:
+  cloudId    — your cloud ID (from mews registration)
+  appId      — the appId from the c_nd command you're responding to
+              — use "-" if this is an autonomous state update (no app waiting)
+  respTodo   — what you did (mirrors the todo from the command)
+  resultData — whatever data you want to send back
+  newState   — the current state of the device (stored in DB as last_state)
+
+Example:
+r_nd|DEV-a1b2c3|a1b2c3d4e5|toggle|success|on</pre>
+    </div>
+
+    <div class="callout callout-info">
+      <div class="callout-icon">i</div>
+      <div>When the device responds with <code>r_nd</code>, the cloud automatically updates <code>last_state</code> in the DB with whatever is in the <code>newState</code> field (everything after <code>respTodo</code> joined with <code>|</code>).</div>
+    </div>
+
+    <div class="callout callout-warn">
+      <div class="callout-icon">!</div>
+      <div>Device must send <code>mews|&lt;dbId&gt;</code> within ~1000 seconds of registration, otherwise the server will auto-delete the device from the DB.</div>
+    </div>
+  </div>
+
+  <!-- HUB FLOW -->
+  <div class="section" id="ws-hub">
+    <div class="section-title">Hub Flow</div>
+    <div class="section-desc">Hubs connect similarly to devices but use <code>mewh</code> instead of <code>mews</code>.</div>
+
+    <div class="ws-flow">
+      <div class="flow-step">
+        <div class="flow-num">1</div>
+        <div class="flow-content">
+          <div class="flow-label arrow-to-server">▲ Hub → Server — Map with DB id</div>
+          <div class="flow-msg">mewh|&lt;dbId&gt;</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">2</div>
+        <div class="flow-content">
+          <div class="flow-label arrow-from-server">▼ Server → Hub — Confirmed, active plan + full plan catalogue</div>
+          <div class="flow-msg">registered|&lt;dbId&gt;|&lt;userPlan&gt;|&lt;devPlan&gt;|basic:0,stellar:2000,premium:5000,prime:8000</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="body-note">Hubs don't handle <code>c_nd</code> / <code>r_nd</code> directly right now — that's device-level. The hub mainly signals presence (online/offline). Device commands still go device-to-device.</div>
+  </div>
+
+  <!-- WS COMMANDS REF -->
+  <div class="section" id="ws-commands">
+    <div class="section-title">WebSocket Commands Reference</div>
+
+    <table class="params-table" style="margin-top:8px">
+      <tr>
+        <th>Command</th>
+        <th>Sent by</th>
+        <th>Format</th>
+        <th>Description</th>
+      </tr>
+      <tr>
+        <td class="param-name">auth</td>
+        <td>App</td>
+        <td class="param-type">auth|&lt;jwt&gt;</td>
+        <td class="param-desc">Authenticate the app session</td>
+      </tr>
+      <tr>
+        <td class="param-name">getds</td>
+        <td>App</td>
+        <td class="param-type">getds</td>
+        <td class="param-desc">Get device list (must be authenticated first)</td>
+      </tr>
+      <tr>
+        <td class="param-name">c_nd</td>
+        <td>App</td>
+        <td class="param-type">c_nd|&lt;dbId&gt;|&lt;appId&gt;|&lt;todo&gt;|[args]</td>
+        <td class="param-desc">Send command to a device</td>
+      </tr>
+      <tr>
+        <td class="param-name">mews</td>
+        <td>Device</td>
+        <td class="param-type">mews|&lt;dbId&gt;</td>
+        <td class="param-desc">Device maps itself ("Map Each Wireless Sensor")</td>
+      </tr>
+      <tr>
+        <td class="param-name">mewh</td>
+        <td>Hub</td>
+        <td class="param-type">mewh|&lt;dbId&gt;</td>
+        <td class="param-desc">Hub maps itself</td>
+      </tr>
+      <tr>
+        <td class="param-name">r_nd</td>
+        <td>Device</td>
+        <td class="param-type">r_nd|&lt;cloudId&gt;|&lt;appId&gt;|&lt;respTodo&gt;|&lt;data&gt;|&lt;state&gt;</td>
+        <td class="param-desc">Device responds to a command or sends a state update</td>
+      </tr>
+      <tr>
+        <td class="param-name">ping</td>
+        <td>Device</td>
+        <td class="param-type">ping</td>
+        <td class="param-desc">Heartbeat — updates last_seen. Send every 30s.</td>
+      </tr>
+    </table>
+
+    <div class="body-label" style="margin-top:20px">Server Responses</div>
+    <table class="params-table">
+      <tr>
+        <th>Response</th>
+        <th>Sent to</th>
+        <th>Format</th>
+        <th>Description</th>
+      </tr>
+      <tr>
+        <td class="param-name">auth</td>
+        <td>App</td>
+        <td class="param-type">auth|&lt;appId&gt;</td>
+        <td class="param-desc">App session confirmed, here's your appId</td>
+      </tr>
+      <tr>
+        <td class="param-name">ds</td>
+        <td>App</td>
+        <td class="param-type">ds|{id}:{Local_ID}:{name}:{type}:{state}:{trigs}|...</td>
+        <td class="param-desc">Device list (or <code>ds|empty</code>)</td>
+      </tr>
+      <tr>
+        <td class="param-name">registered</td>
+        <td>Device / Hub</td>
+        <td class="param-type">registered|&lt;dbId&gt;|&lt;userPlan&gt;|&lt;devPlan&gt;|&lt;plans&gt;</td>
+        <td class="param-desc">Mapping confirmed. Includes active plans and the full pricing catalogue.</td>
+      </tr>
+      <tr>
+        <td class="param-name">c_nd</td>
+        <td>Device</td>
+        <td class="param-type">c_nd|&lt;cloudId&gt;|&lt;appId&gt;|&lt;todo&gt;|[args]</td>
+        <td class="param-desc">Forwarded command from an app</td>
+      </tr>
+      <tr>
+        <td class="param-name">r_nd</td>
+        <td>App</td>
+        <td class="param-type">r_nd|&lt;cloudId&gt;|&lt;appId&gt;|&lt;respTodo&gt;|&lt;data&gt;...</td>
+        <td class="param-desc">Forwarded device response</td>
+      </tr>
+      <tr>
+        <td class="param-name">pong</td>
+        <td>Device</td>
+        <td class="param-type">pong|&lt;devId&gt;|&lt;cmd&gt;|&lt;data&gt;</td>
+        <td class="param-desc">Queued server message, delivered on ping</td>
+      </tr>
+      <tr>
+        <td class="param-name">error</td>
+        <td>Any</td>
+        <td class="param-type">error|&lt;message&gt;</td>
+        <td class="param-desc">Something went wrong</td>
+      </tr>
+    </table>
+
+    <div class="body-label" style="margin-top:20px">Full Example — App sends command, device responds</div>
+    <div class="code-wrap">
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+      <pre><span class="json-comment">// 1. App connects and authenticates</span>
+→ auth|eyJhbGciOiJIUzI1NiJ9...
+← auth|a1b2c3d4e5f6g7h8i9j0
+
+<span class="json-comment">// 2. App fetches devices</span>
+→ getds
+← ds|7:ESP32-A1B2:Living Room Light:light:off:|8:ESP32-C3D4:Fan:fan:off:
+
+<span class="json-comment">// 3. App sends command to device #7</span>
+→ c_nd|7|a1b2c3d4e5f6g7h8i9j0|toggle|on
+
+<span class="json-comment">// 4. Server forwards to device #7</span>
+   device receives: c_nd|DEV-a1b2c3d4e5f6|a1b2c3d4e5f6g7h8i9j0|toggle|on
+
+<span class="json-comment">// 5. Device executes and responds</span>
+   device sends: r_nd|DEV-a1b2c3d4e5f6|a1b2c3d4e5f6g7h8i9j0|toggle|ok|on
+
+<span class="json-comment">// 6. Server updates DB (last_state = "on") and routes response to app</span>
+← r_nd|DEV-a1b2c3d4e5f6|a1b2c3d4e5f6g7h8i9j0|toggle|ok|on</pre>
+    </div>
+
+    <div class="body-label">Autonomous state update (device-initiated, no app command)</div>
+    <div class="code-wrap">
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+      <pre><span class="json-comment">// Device detects motion and updates its own state</span>
+<span class="json-comment">// Use "-" as appId since there's no app waiting for a response</span>
+device sends: r_nd|DEV-a1b2c3d4e5f6|-|motion_detected|triggered|active
+
+<span class="json-comment">// Server updates DB and broadcasts to ALL of the device owner's app sessions</span>
+← r_nd|DEV-a1b2c3d4e5f6|-|motion_detected|triggered|active</pre>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  function toggle(header) {
+    const body = header.nextElementSibling;
+    const chevron = header.querySelector('.chevron');
+    const isOpen = body.classList.contains('open');
+    body.classList.toggle('open', !isOpen);
+    chevron.classList.toggle('open', !isOpen);
+  }
+
+  function copyCode(btn) {
+    const pre = btn.nextElementSibling;
+    const text = pre.innerText || pre.textContent;
+    navigator.clipboard.writeText(text).then(() => {
+      const orig = btn.textContent;
+      btn.textContent = 'Copied!';
+      btn.style.color = '#3fb950';
+      setTimeout(() => {
+        btn.textContent = orig;
+        btn.style.color = '';
+      }, 1500);
+    });
+  }
+
+  // Highlight active sidebar link on scroll
+  const sections = document.querySelectorAll('[id]');
+  const links = document.querySelectorAll('.sidebar-link');
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        links.forEach(l => l.classList.remove('active'));
+        const active = document.querySelector(`.sidebar-link[href="#${entry.target.id}"]`);
+        if (active) active.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-20% 0px -70% 0px' });
+
+  sections.forEach(s => observer.observe(s));
+
+  // Smooth scroll
+  document.querySelectorAll('.sidebar-link[href^="#"]').forEach(link => {
+    link.addEventListener('click', e => {
+      e.preventDefault();
+      const target = document.querySelector(link.getAttribute('href'));
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+</script>
+</body>
+</html>
