@@ -9,7 +9,7 @@ const SALT_ROUNDS = 12;
 /**
  * Register new user
  */
-const register = async ({ email, username, password, firstName, lastName }) => {
+const register = async ({ email, username, password, firstName, lastName, role, organizationName, gender, dateOfBirth }) => {
   // Check if email exists
   const existingEmail = await query('SELECT id FROM users WHERE email = ?', [email]);
   if (existingEmail.length > 0) {
@@ -37,9 +37,9 @@ const register = async ({ email, username, password, firstName, lastName }) => {
 
   // Insert user
   const result = await query(
-    `INSERT INTO users (email, username, password_hash, first_name, last_name, verification_token, verification_token_expires)
-     VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id`,
-    [email, username, passwordHash, firstName || null, lastName || null, verificationToken, verificationExpires]
+    `INSERT INTO users (email, username, password_hash, first_name, last_name, role, organization_name, gender, date_of_birth, verification_token, verification_token_expires)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
+    [email, username, passwordHash, firstName || null, lastName || null, role, organizationName || null, gender, dateOfBirth, verificationToken, verificationExpires]
   );
 
   return {

@@ -719,8 +719,12 @@
           <tr><td class="param-name">email</td><td class="param-type">string</td><td class="param-req">required</td><td class="param-desc">Valid email, gets normalized</td></tr>
           <tr><td class="param-name">username</td><td class="param-type">string</td><td class="param-req">required</td><td class="param-desc">3–50 chars, letters/numbers/underscores only</td></tr>
           <tr><td class="param-name">password</td><td class="param-type">string</td><td class="param-req">required</td><td class="param-desc">Min 8 chars</td></tr>
+          <tr><td class="param-name">role</td><td class="param-type">string</td><td class="param-req">required</td><td class="param-desc"><code>host</code> or <code>developer</code></td></tr>
+          <tr><td class="param-name">gender</td><td class="param-type">string</td><td class="param-req">required</td><td class="param-desc"><code>male</code>, <code>female</code>, <code>other</code>, or <code>prefer_not_to_say</code></td></tr>
+          <tr><td class="param-name">dateOfBirth</td><td class="param-type">string</td><td class="param-req">required</td><td class="param-desc">ISO 8601 format — <code>YYYY-MM-DD</code>, must be in the past</td></tr>
           <tr><td class="param-name">firstName</td><td class="param-type">string</td><td class="param-opt">optional</td><td class="param-desc">Max 100 chars</td></tr>
           <tr><td class="param-name">lastName</td><td class="param-type">string</td><td class="param-opt">optional</td><td class="param-desc">Max 100 chars</td></tr>
+          <tr><td class="param-name">organizationName</td><td class="param-type">string</td><td class="param-opt">optional</td><td class="param-desc">Max 255 chars. Relevant when role is <code>host</code></td></tr>
         </table>
         <div class="body-label">Example Request</div>
         <div class="code-wrap">
@@ -729,8 +733,12 @@
   <span class="json-key">"email"</span>: <span class="json-str">"john@example.com"</span>,
   <span class="json-key">"username"</span>: <span class="json-str">"john_doe"</span>,
   <span class="json-key">"password"</span>: <span class="json-str">"securepass123"</span>,
+  <span class="json-key">"role"</span>: <span class="json-str">"host"</span>,
+  <span class="json-key">"gender"</span>: <span class="json-str">"male"</span>,
+  <span class="json-key">"dateOfBirth"</span>: <span class="json-str">"1995-08-21"</span>,
   <span class="json-key">"firstName"</span>: <span class="json-str">"John"</span>,
-  <span class="json-key">"lastName"</span>: <span class="json-str">"Doe"</span>
+  <span class="json-key">"lastName"</span>: <span class="json-str">"Doe"</span>,
+  <span class="json-key">"organizationName"</span>: <span class="json-str">"Doe Properties"</span> <span class="json-comment">// optional</span>
 }</pre>
         </div>
         <div class="body-label">Response — 201 Created</div>

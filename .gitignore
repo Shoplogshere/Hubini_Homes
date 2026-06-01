@@ -8,7 +8,7 @@ node_modules/
 .env.production
 
 import.js
-
+migrate.js
 # Logs
 logs
 *.log

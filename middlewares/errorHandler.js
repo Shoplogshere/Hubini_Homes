@@ -56,6 +56,23 @@ const errorHandler = (err, req, res, next) => {
     });
   }
 
+  // Infrastructure errors — generic user messages, full detail in logs only
+  const INFRA_ERROR_MAP = {
+    ER_ACCESS_DENIED_ERROR: 'Service configuration issue. Please contact support.',
+    ER_BAD_DB_ERROR:        'Service setup issue. Please contact support.',
+    ER_CON_COUNT_ERROR:     'Service is currently busy. Please try again shortly.',
+    ECONNREFUSED:           'Service is temporarily unavailable. Please try again later.',
+    PROTOCOL_CONNECTION_LOST: 'Connection interrupted. Please try again.',
+    ETIMEDOUT:              'Request timed out. Please try again.',
+  };
+  if (err.code && INFRA_ERROR_MAP[err.code]) {
+    console.error(`[INFRA ERROR ${err.code}]:`, err.message);
+    return response.error(res, {
+      message: INFRA_ERROR_MAP[err.code],
+      errorCode: ERROR_CODES.SERVER_ERROR
+    });
+  }
+
   // Custom application errors
   if (err.statusCode) {
     return response.error(res, {
@@ -65,13 +82,10 @@ const errorHandler = (err, req, res, next) => {
     });
   }
 
-  // Default server error
-  const message = process.env.NODE_ENV === 'production'
-    ? 'Internal server error'
-    : err.message;
-
+  // Default server error — log full details, send safe message
+  console.error('[UNHANDLED ERROR]:', err.message, err.stack);
   return response.error(res, {
-    message,
+    message: 'Something went wrong. Please try again.',
     errorCode: ERROR_CODES.SERVER_ERROR
   });
 };

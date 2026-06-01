@@ -8,14 +8,18 @@ const { asyncHandler } = require('../../middlewares/errorHandler');
  * POST /api/v1/auth/register
  */
 const register = asyncHandler(async (req, res) => {
-  const { email, username, password, firstName, lastName } = req.body;
+  const { email, username, password, firstName, lastName, role, organizationName, gender, dateOfBirth } = req.body;
 
   const result = await authService.register({
     email,
     username,
     password,
     firstName,
-    lastName
+    lastName,
+    role,
+    organizationName,
+    gender,
+    dateOfBirth
   });
 
   return response.created(res, {

@@ -39,6 +39,21 @@ const registerValidator = [
     .isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
   body('firstName').optional().trim().isLength({ max: 100 }),
   body('lastName').optional().trim().isLength({ max: 100 }),
+  body('role')
+    .trim()
+    .notEmpty().withMessage('Role is required')
+    .isIn(['host', 'developer']).withMessage('Role must be one of: host, developer'),
+  body('organizationName')
+    .optional()
+    .trim()
+    .isLength({ max: 255 }).withMessage('Organization name must not exceed 255 characters'),
+  body('gender')
+    .notEmpty().withMessage('Gender is required')
+    .isIn(['male', 'female', 'other', 'prefer_not_to_say']).withMessage('Gender must be one of: male, female, other, prefer_not_to_say'),
+  body('dateOfBirth')
+    .notEmpty().withMessage('Date of birth is required')
+    .isISO8601().withMessage('Date of birth must be a valid date (YYYY-MM-DD)')
+    .isBefore(new Date().toISOString()).withMessage('Date of birth must be in the past'),
   validate
 ];
 
