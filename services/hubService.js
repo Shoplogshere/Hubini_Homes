@@ -1,84 +1,72 @@
 const { query } = require('../config/database');
-const { generateCloudId } = require('../utils/helpers');
 const { ERROR_CODES } = require('../config/constants');
 
-// Hub must connect via WebSocket within this window or be auto-deleted
-const ACTIVATION_TIMEOUT_MS = 1000 * 1000; // 1000 seconds
-
-const activationTimers = new Map(); // hubId -> timer handle
-
-const scheduleActivationCleanup = (hubId) => {
-  cancelActivationTimer(hubId);
-  const timer = setTimeout(async () => {
-    activationTimers.delete(hubId);
-    try {
-      const rows = await query('SELECT is_online FROM hubs WHERE id = ?', [hubId]);
-      if (rows.length > 0 && !rows[0].is_online) {
-        await query('DELETE FROM hubs WHERE id = ?', [hubId]);
-        console.log(` Auto-deleted inactive hub: id=${hubId}`);
-      }
-    } catch (err) {
-      console.error('Hub cleanup timer error:', err.message);
-    }
-  }, ACTIVATION_TIMEOUT_MS);
-  activationTimers.set(hubId, timer);
-};
-
-const cancelActivationTimer = (hubId) => {
-  if (activationTimers.has(hubId)) {
-    clearTimeout(activationTimers.get(hubId));
-    activationTimers.delete(hubId);
-  }
-};
-
 /**
- * Register new hub
+ * Register hub from WebSocket addH command.
+ * Idempotent: returns existing hub if local_id already registered for this user.
  */
-const registerHub = async (userId, { hubToken, hubName, type, model }) => {
-  // Check if hub with this token exists for this user
+const registerHubFromWS = async (userId, { hubLocalId, hubName, type, model, localUsername, guestPin }) => {
   const existing = await query(
-    'SELECT id FROM hubs WHERE user_id = ? AND hub_token = ?',
-    [userId, hubToken]
+    'SELECT id FROM hubs WHERE user_id = ? AND local_id = ?',
+    [userId, hubLocalId]
   );
 
   if (existing.length > 0) {
-    const error = new Error('Hub with this token already exists');
-    error.statusCode = 409;
-    error.errorCode = ERROR_CODES.HUB_EXISTS;
-    throw error;
+    return { id: existing[0].id };
   }
 
-  // Generate cloud ID
-  const cloudId = generateCloudId('HUB');
-
   const result = await query(
-    `INSERT INTO hubs (cloud_id, user_id, hub_token, hub_name, type, model)
-     VALUES (?, ?, ?, ?, ?, ?) RETURNING id`,
-    [cloudId, userId, hubToken, hubName, type, model]
+    `INSERT INTO hubs (user_id, local_id, hub_name, type, model, local_username, guest_pin)
+     VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id`,
+    [userId, hubLocalId, hubName, type, model, localUsername || null, guestPin || null]
   );
 
-  // Start activation timer — hub must connect via WS or it gets deleted
-  scheduleActivationCleanup(result[0].id);
-
-  return {
-    id: result[0].id,
-    your_cloudID: cloudId
-  };
+  return { id: result[0].id };
 };
 
 /**
- * Get all hubs for user
+ * Look up a hub by local_id + user_id (used on ping reconnect).
+ */
+const getHubByLocalId = async (userId, hubLocalId) => {
+  const rows = await query(
+    'SELECT id, local_id, is_online FROM hubs WHERE user_id = ? AND local_id = ?',
+    [userId, hubLocalId]
+  );
+  return rows[0] || null;
+};
+
+/**
+ * Add a node device to a hub (called from AdHN ping command).
+ * Idempotent: no-op if device already linked to this hub.
+ */
+const addHubNode = async (userId, hubId, { localId, name, type, trigs }) => {
+  const existing = await query(
+    'SELECT id FROM devices WHERE user_id = ? AND local_id = ? AND hub_id = ?',
+    [userId, localId, hubId]
+  );
+
+  if (existing.length > 0) return { id: existing[0].id };
+
+  const result = await query(
+    `INSERT INTO devices (user_id, hub_id, local_id, name, type, trigs)
+     VALUES (?, ?, ?, ?, ?, ?) RETURNING id`,
+    [userId, hubId, localId, name, type, trigs || null]
+  );
+
+  return { id: result[0].id };
+};
+
+/**
+ * Get all hubs for user (paginated).
  */
 const getUserHubs = async (userId, { page, limit, offset }) => {
-  // Get count
   const countResult = await query(
     'SELECT COUNT(*)::int as total FROM hubs WHERE user_id = ?',
     [userId]
   );
 
-  // Get hubs
   const hubs = await query(
-    `SELECT id, cloud_id, hub_token, hub_name, type, model, is_online, last_seen, created_at
+    `SELECT id, local_id, hub_name, type, model, local_username, guest_pin, is_online, last_seen, created_at
      FROM hubs WHERE user_id = ?
      ORDER BY created_at DESC
      LIMIT ? OFFSET ?`,
@@ -88,11 +76,12 @@ const getUserHubs = async (userId, { page, limit, offset }) => {
   return {
     hubs: hubs.map(h => ({
       id: h.id,
-      cloudId: h.cloud_id,
-      hubToken: h.hub_token,
+      localId: h.local_id,
       hubName: h.hub_name,
       type: h.type,
       model: h.model,
+      localUsername: h.local_username,
+      guestPin: h.guest_pin,
       isOnline: Boolean(h.is_online),
       lastSeen: h.last_seen,
       createdAt: h.created_at
@@ -104,11 +93,11 @@ const getUserHubs = async (userId, { page, limit, offset }) => {
 };
 
 /**
- * Get single hub
+ * Get single hub (with ownership check).
  */
 const getHub = async (userId, hubId) => {
   const hubs = await query(
-    `SELECT id, cloud_id, hub_token, hub_name, type, model, is_online, last_seen, created_at, updated_at
+    `SELECT id, local_id, hub_name, type, model, local_username, guest_pin, is_online, last_seen, created_at, updated_at
      FROM hubs WHERE id = ? AND user_id = ?`,
     [hubId, userId]
   );
@@ -123,11 +112,12 @@ const getHub = async (userId, hubId) => {
   const h = hubs[0];
   return {
     id: h.id,
-    cloudId: h.cloud_id,
-    hubToken: h.hub_token,
+    localId: h.local_id,
     hubName: h.hub_name,
     type: h.type,
     model: h.model,
+    localUsername: h.local_username,
+    guestPin: h.guest_pin,
     isOnline: Boolean(h.is_online),
     lastSeen: h.last_seen,
     createdAt: h.created_at,
@@ -136,32 +126,9 @@ const getHub = async (userId, hubId) => {
 };
 
 /**
- * Get hub by DB integer ID (used by WS mapping)
- */
-const getHubById = async (hubId) => {
-  const hubs = await query(
-    'SELECT id, cloud_id, user_id, hub_token, hub_name, type, model, is_online FROM hubs WHERE id = ?',
-    [hubId]
-  );
-  return hubs[0] || null;
-};
-
-/**
- * Get hub by cloud ID
- */
-const getHubByCloudId = async (cloudId) => {
-  const hubs = await query(
-    'SELECT id, cloud_id, user_id, hub_id, hub_name, type, model, is_online FROM hubs WHERE cloud_id = ?',
-    [cloudId]
-  );
-  return hubs[0] || null;
-};
-
-/**
- * Update hub
+ * Update hub fields.
  */
 const updateHub = async (userId, hubId, updates) => {
-  // Check exists
   const existing = await query(
     'SELECT id FROM hubs WHERE id = ? AND user_id = ?',
     [hubId, userId]
@@ -174,22 +141,12 @@ const updateHub = async (userId, hubId, updates) => {
     throw error;
   }
 
-  // Build update
   const fields = [];
   const values = [];
 
-  if (updates.hubName !== undefined) {
-    fields.push('hub_name = ?');
-    values.push(updates.hubName);
-  }
-  if (updates.type !== undefined) {
-    fields.push('type = ?');
-    values.push(updates.type);
-  }
-  if (updates.model !== undefined) {
-    fields.push('model = ?');
-    values.push(updates.model);
-  }
+  if (updates.hubName !== undefined) { fields.push('hub_name = ?'); values.push(updates.hubName); }
+  if (updates.type !== undefined)    { fields.push('type = ?');     values.push(updates.type); }
+  if (updates.model !== undefined)   { fields.push('model = ?');    values.push(updates.model); }
 
   if (fields.length > 0) {
     values.push(hubId);
@@ -200,17 +157,17 @@ const updateHub = async (userId, hubId, updates) => {
 };
 
 /**
- * Set hub online status
+ * Set hub online/offline status by DB id.
  */
-const setHubOnline = async (cloudId, isOnline) => {
+const setHubOnline = async (hubId, isOnline) => {
   await query(
-    'UPDATE hubs SET is_online = ?, last_seen = NOW() WHERE cloud_id = ?',
-    [isOnline, cloudId]
+    'UPDATE hubs SET is_online = ?, last_seen = NOW() WHERE id = ?',
+    [isOnline, hubId]
   );
 };
 
 /**
- * Delete hub
+ * Delete hub and unlink its devices.
  */
 const deleteHub = async (userId, hubId) => {
   const existing = await query(
@@ -225,20 +182,16 @@ const deleteHub = async (userId, hubId) => {
     throw error;
   }
 
-  // Unlink devices from hub
   await query('UPDATE devices SET hub_id = NULL WHERE hub_id = ?', [hubId]);
-
-  // Delete hub
   await query('DELETE FROM hubs WHERE id = ?', [hubId]);
 
   return { message: 'Hub deleted successfully' };
 };
 
 /**
- * Get hub devices
+ * Get all devices linked to a hub.
  */
 const getHubDevices = async (userId, hubId) => {
-  // Verify ownership
   const hubs = await query(
     'SELECT id FROM hubs WHERE id = ? AND user_id = ?',
     [hubId, userId]
@@ -252,7 +205,7 @@ const getHubDevices = async (userId, hubId) => {
   }
 
   const devices = await query(
-    `SELECT id, cloud_id, local_id, name, type, model, trigs, last_state, is_online, last_seen
+    `SELECT id, local_id, name, type, model, trigs, last_state, is_online, last_seen
      FROM devices WHERE hub_id = ?
      ORDER BY created_at DESC`,
     [hubId]
@@ -260,7 +213,6 @@ const getHubDevices = async (userId, hubId) => {
 
   return devices.map(d => ({
     id: d.id,
-    cloudId: d.cloud_id,
     Local_ID: d.local_id,
     name: d.name,
     type: d.type,
@@ -273,10 +225,9 @@ const getHubDevices = async (userId, hubId) => {
 };
 
 /**
- * Link device to hub
+ * Link a standalone device to a hub.
  */
 const linkDevice = async (userId, hubId, deviceId) => {
-  // Verify hub ownership
   const hubs = await query(
     'SELECT id FROM hubs WHERE id = ? AND user_id = ?',
     [hubId, userId]
@@ -289,7 +240,6 @@ const linkDevice = async (userId, hubId, deviceId) => {
     throw error;
   }
 
-  // Verify device ownership
   const devices = await query(
     'SELECT id FROM devices WHERE id = ? AND user_id = ?',
     [deviceId, userId]
@@ -303,16 +253,15 @@ const linkDevice = async (userId, hubId, deviceId) => {
   }
 
   await query('UPDATE devices SET hub_id = ? WHERE id = ?', [hubId, deviceId]);
-
   return { message: 'Device linked to hub successfully' };
 };
 
 /**
- * Unlink device from hub
+ * Unlink a device from its hub.
  */
 const unlinkDevice = async (userId, deviceId) => {
   const devices = await query(
-    'SELECT id, hub_id FROM devices WHERE id = ? AND user_id = ?',
+    'SELECT id FROM devices WHERE id = ? AND user_id = ?',
     [deviceId, userId]
   );
 
@@ -324,22 +273,19 @@ const unlinkDevice = async (userId, deviceId) => {
   }
 
   await query('UPDATE devices SET hub_id = NULL WHERE id = ?', [deviceId]);
-
   return { message: 'Device unlinked from hub successfully' };
 };
 
 module.exports = {
-  registerHub,
+  registerHubFromWS,
+  getHubByLocalId,
+  addHubNode,
   getUserHubs,
   getHub,
-  getHubById,
-  getHubByCloudId,
   updateHub,
   setHubOnline,
   deleteHub,
   getHubDevices,
   linkDevice,
-  unlinkDevice,
-  scheduleActivationCleanup,
-  cancelActivationTimer
+  unlinkDevice
 };

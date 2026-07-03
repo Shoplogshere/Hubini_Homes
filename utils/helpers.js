@@ -23,6 +23,11 @@ const generateToken = (length = 32) => {
 };
 
 /**
+ * Generate 20-char add-device token (issued at login when RequestAddDevice is set)
+ */
+const generateAddDeviceToken = () => crypto.randomBytes(10).toString('hex');
+
+/**
  * Get client IP from request
  */
 const getClientIP = (req) => {
@@ -54,6 +59,7 @@ module.exports = {
   generateAppId,
   generateCloudId,
   generateToken,
+  generateAddDeviceToken,
   getClientIP,
   sanitizeObject,
   parsePagination

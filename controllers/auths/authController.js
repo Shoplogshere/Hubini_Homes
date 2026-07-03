@@ -37,9 +37,9 @@ const register = asyncHandler(async (req, res) => {
  * POST /api/v1/auth/login
  */
 const login = asyncHandler(async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, RequestAddDevice } = req.body;
 
-  const result = await authService.login({ email, password });
+  const result = await authService.login({ email, password, requestAddDevice: Boolean(RequestAddDevice) });
 
   return response.success(res, {
     data: result,

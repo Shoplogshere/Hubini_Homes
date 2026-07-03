@@ -3,22 +3,20 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const deviceService = require('../services/deviceService');
 const hubService = require('../services/hubService');
+const { validateAddDeviceToken, markAddDeviceTokenUsed } = require('../services/authService');
 
 const generateAppId = () => crypto.randomBytes(10).toString('hex'); // 20 hex chars
-
-// Sent to every device/hub on mews/mewh so hardware knows the current tier pricing
-const PLANS = 'basic:0,stellar:2000,premium:5000,prime:8000';
 
 class WebSocketManager {
   constructor() {
     this.wss = null;
-    this.clients = new Map();        // userId  -> Set<ws>
+    this.clients = new Map();        // userId  -> Set<ws>   (authenticated app clients)
     this.appConnections = new Map(); // appId   -> ws
-    this.devices = new Map();        // dbId (string) -> ws
-    this.hubs = new Map();           // dbId (string) -> ws
-    this.deviceMeta = new Map();     // dbId -> { cloudId, userId, userPlan, devPlan }
-    this.hubMeta = new Map();        // dbId -> { cloudId, userId }
-    this.pendingPongs = new Map();   // dbId (string) -> Array<{ cmd, data }>
+    this.devices = new Map();        // dbId    -> ws
+    this.hubs = new Map();           // dbId    -> ws
+    this.deviceMeta = new Map();     // dbId    -> { userId, localId }
+    this.hubMeta = new Map();        // dbId    -> { userId, hubLocalId }
+    this.pendingPongs = new Map();   // dbId    -> Array<{ cmd, data }>
   }
 
   // ─────────────────────────────────────────────
@@ -36,8 +34,6 @@ class WebSocketManager {
   // ─────────────────────────────────────────────
 
   handleConnection(ws, req) {
-    console.log(' New WebSocket connection');
-
     ws.appId = generateAppId();
     ws.authenticated = false;
     ws.connectionType = null; // 'app' | 'device' | 'hub'
@@ -59,13 +55,13 @@ class WebSocketManager {
       const cmd = parts[0].toLowerCase();
 
       switch (cmd) {
-        case 'mews':  return this.handleDeviceMapping(ws, parts);
-        case 'mewh':  return this.handleHubMapping(ws, parts);
+        case 'addd':  return this.handleAddDevice(ws, parts);
+        case 'addh':  return this.handleAddHub(ws, parts);
         case 'auth':  return this.handleAuth(ws, parts);
         case 'getds': return this.handleGetDevices(ws);
-        case 'c_nd':  return this.handleClientCommand(ws, parts);  // app → cloud → device
-        case 'r_nd':  return this.handleNodeResponse(ws, parts);   // device → cloud → app
-        case 'ping':  return this.handleDevicePing(ws);
+        case 'c_nd':  return this.handleClientCommand(ws, parts);
+        case 'r_nd':  return this.handleNodeResponse(ws, parts);
+        case 'ping':  return this.handlePing(ws, parts);
         default:
           this.send(ws, `error|Unknown command: ${cmd}`);
       }
@@ -76,101 +72,97 @@ class WebSocketManager {
   }
 
   // ─────────────────────────────────────────────
-  // DEVICE MAPPING  —  mews|<dbId>
-  // Response: registered|<dbId>|<userPlan>|<devPlan>|<plans>
-  // plans = comma-separated tier:price pairs (e.g. basic:0,stellar:2000,...)
-  // Device stores all of this at connection time — not repeated in every command
+  // ADD DEVICE  —  addD|<Local_ID>|<Name>|<Type>|<trigs>|<Model>|<add_device_token>
+  // Response: AdD_resp|<local_ID>|suc|<cloud_user_id>
   // ─────────────────────────────────────────────
 
-  async handleDeviceMapping(ws, parts) {
-    const dbId = parts[1]?.trim();
-    if (!dbId || isNaN(dbId)) {
-      return this.send(ws, 'error|Valid device ID required');
+  async handleAddDevice(ws, parts) {
+    const [, localId, name, type, trigs, model, token] = parts;
+
+    if (!localId || !name || !type || !model || !token) {
+      return this.send(ws, 'error|Missing required fields');
     }
 
-    try {
-      const device = await deviceService.getDeviceById(parseInt(dbId));
-      if (!device) {
-        return this.send(ws, `error|Device ${dbId} not found`);
-      }
+    const tokenRecord = await validateAddDeviceToken(token);
+    if (!tokenRecord) {
+      return this.send(ws, 'error|Invalid or expired add-device token');
+    }
 
-      ws.dbId = String(dbId);
-      ws.cloudId = device.cloud_id;
+    const { id: tokenId, userId } = tokenRecord;
+
+    try {
+      const device = await deviceService.registerDeviceFromWS(userId, { localId, name, type, trigs, model });
+      await markAddDeviceTokenUsed(tokenId);
+
+      ws.dbId = String(device.id);
+      ws.localId = localId;
+      ws.userId = userId;
       ws.connectionType = 'device';
 
-      const userPlan = 'free'; // extend when plan field added to users table
-      const devPlan = 'free';
+      this.devices.set(String(device.id), ws);
+      this.deviceMeta.set(String(device.id), { userId, localId });
 
-      this.devices.set(String(dbId), ws);
-      this.deviceMeta.set(String(dbId), {
-        cloudId: device.cloud_id,
-        userId: device.user_id,
-        userPlan,
-        devPlan
-      });
+      await deviceService.setDeviceOnline(device.id, true);
 
-      deviceService.cancelActivationTimer(parseInt(dbId));
-      await deviceService.setDeviceOnline(device.cloud_id, true);
-
-      console.log(` Device mapped: dbId=${dbId}, cloud_id=${device.cloud_id}`);
-
-      this.send(ws, `registered|${dbId}|${userPlan}|${devPlan}|${PLANS}`);
+      console.log(` Device registered: localId=${localId}, dbId=${device.id}, userId=${userId}`);
+      this.send(ws, `AdD_resp|${localId}|suc|${userId}`);
     } catch (err) {
-      console.error('Device mapping error:', err.message);
-      this.send(ws, 'error|Mapping failed');
+      console.error('addD error:', err.message);
+      this.send(ws, 'error|Failed to register device');
     }
   }
 
   // ─────────────────────────────────────────────
-  // HUB MAPPING  —  mewh|<dbId>
-  // Response: registered|<dbId>|<userPlan>|<devPlan>|<plans>
+  // ADD HUB  —  addH|<hubID>|<HubName>|<type>|<model>|<local_username>|<guest_pin>|<add_device_token>
+  // Response: AdD_resp|<hubID>|suc|<cloud_user_id>
   // ─────────────────────────────────────────────
 
-  async handleHubMapping(ws, parts) {
-    const dbId = parts[1]?.trim();
-    if (!dbId || isNaN(dbId)) {
-      return this.send(ws, 'error|Valid hub ID required');
+  async handleAddHub(ws, parts) {
+    const [, hubLocalId, hubName, type, model, localUsername, guestPin, token] = parts;
+
+    if (!hubLocalId || !hubName || !type || !model || !token) {
+      return this.send(ws, 'error|Missing required fields');
     }
 
-    try {
-      const hub = await hubService.getHubById(parseInt(dbId));
-      if (!hub) {
-        return this.send(ws, `error|Hub ${dbId} not found`);
-      }
+    const tokenRecord = await validateAddDeviceToken(token);
+    if (!tokenRecord) {
+      return this.send(ws, 'error|Invalid or expired add-device token');
+    }
 
-      ws.dbId = String(dbId);
-      ws.cloudId = hub.cloud_id;
+    const { id: tokenId, userId } = tokenRecord;
+
+    try {
+      const hub = await hubService.registerHubFromWS(userId, {
+        hubLocalId, hubName, type, model, localUsername, guestPin
+      });
+      await markAddDeviceTokenUsed(tokenId);
+
+      ws.dbId = String(hub.id);
+      ws.hubLocalId = hubLocalId;
+      ws.userId = userId;
       ws.connectionType = 'hub';
 
-      const userPlan = 'free';
-      const devPlan = 'free';
+      this.hubs.set(String(hub.id), ws);
+      this.hubMeta.set(String(hub.id), { userId, hubLocalId });
 
-      this.hubs.set(String(dbId), ws);
-      this.hubMeta.set(String(dbId), {
-        cloudId: hub.cloud_id,
-        userId: hub.user_id
-      });
+      await hubService.setHubOnline(hub.id, true);
 
-      hubService.cancelActivationTimer(parseInt(dbId));
-      await hubService.setHubOnline(hub.cloud_id, true);
-
-      console.log(` Hub mapped: dbId=${dbId}, cloud_id=${hub.cloud_id}`);
-      this.send(ws, `registered|${dbId}|${userPlan}|${devPlan}|${PLANS}`);
+      console.log(` Hub registered: localId=${hubLocalId}, dbId=${hub.id}, userId=${userId}`);
+      this.send(ws, `AdD_resp|${hubLocalId}|suc|${userId}`);
     } catch (err) {
-      console.error('Hub mapping error:', err.message);
-      this.send(ws, 'error|Mapping failed');
+      console.error('addH error:', err.message);
+      this.send(ws, 'error|Failed to register hub');
     }
   }
 
   // ─────────────────────────────────────────────
   // CLIENT AUTH  —  auth|<jwt>
+  // Response: auth|<appId>
   // ─────────────────────────────────────────────
 
   async handleAuth(ws, parts) {
     const token = parts[1];
-    if (!token) {
-      return this.send(ws, 'error|Token required');
-    }
+    if (!token) return this.send(ws, 'error|Token required');
 
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
@@ -184,16 +176,15 @@ class WebSocketManager {
       }
       this.clients.get(decoded.userId).add(ws);
 
-      console.log(` Client authenticated: userId=${decoded.userId}, appId=${ws.appId}`);
-      // App receives its assigned appId — used in all subsequent c_nd commands
+      console.log(` App authenticated: userId=${decoded.userId}`);
       this.send(ws, `auth|${ws.appId}`);
-    } catch (err) {
+    } catch {
       this.send(ws, 'error|Invalid token');
     }
   }
 
   // ─────────────────────────────────────────────
-  // GET DEVICES  —  getds
+  // GET DEVICES (WS)  —  getds
   // Response: ds|<id>:<localId>:<name>:<type>:<state>:<trigs>|...
   // ─────────────────────────────────────────────
 
@@ -205,9 +196,7 @@ class WebSocketManager {
     try {
       const devices = await deviceService.getDevicesForClient(ws.userId);
 
-      if (devices.length === 0) {
-        return this.send(ws, 'ds|empty');
-      }
+      if (devices.length === 0) return this.send(ws, 'ds|empty');
 
       const encoded = devices.map(d =>
         `${d.id}:${d.Local_ID}:${d.name}:${d.type}:${d.Last_state || 'unknown'}:${d.Trigs || ''}`
@@ -215,18 +204,128 @@ class WebSocketManager {
 
       this.send(ws, `ds|${encoded}`);
     } catch (err) {
-      console.error('Error fetching devices:', err.message);
+      console.error('getds error:', err.message);
       this.send(ws, 'error|Failed to fetch devices');
     }
   }
 
   // ─────────────────────────────────────────────
+  // PING  —  ping|<localId>|<userId>|<cmd_or_dash>|<optional_args>
+  //
+  // Default (no queued data): ping|<localId>|<userId>|-
+  // With embedded command:    ping|<localId>|<userId>|AdHN|<device_data>
+  //
+  // On first receive: re-maps the WS connection to the right device/hub in case
+  // this is a reconnection (new socket, same hardware).
+  // ─────────────────────────────────────────────
+
+  async handlePing(ws, parts) {
+    const localId = parts[1];
+    const userId  = parseInt(parts[2]);
+    const cmd     = parts[3]; // '-' or a command name
+    const args    = parts.slice(4).join('|');
+
+    if (!localId || isNaN(userId)) return;
+
+    // Re-map this socket to the device/hub if it reconnected without sending addD/addH again
+    if (!ws.dbId) {
+      await this.remapConnection(ws, localId, userId);
+    }
+
+    // Update last_seen
+    if (ws.connectionType === 'device' && ws.dbId) {
+      try { await deviceService.setDeviceOnline(parseInt(ws.dbId), true); } catch { /* non-critical */ }
+    } else if (ws.connectionType === 'hub' && ws.dbId) {
+      try { await hubService.setHubOnline(parseInt(ws.dbId), true); } catch { /* non-critical */ }
+    }
+
+    // Drain any server-queued data waiting for this ping
+    if (ws.dbId) {
+      const queue = this.pendingPongs.get(ws.dbId);
+      if (queue && queue.length > 0) {
+        for (const { cmd: pCmd, data } of queue) {
+          this.send(ws, `pong|${ws.dbId}|${pCmd}|${data}`);
+        }
+        this.pendingPongs.delete(ws.dbId);
+      }
+    }
+
+    // Handle embedded command (replaces '-' when hub has queued data)
+    if (cmd && cmd !== '-') {
+      if (cmd.toLowerCase() === 'adhn') {
+        return this.handleAddHubNode(ws, localId, userId, args);
+      }
+    }
+  }
+
+  // ─────────────────────────────────────────────
+  // HUB ADD NODE  —  embedded in ping as AdHN
+  // ping|<hubId>|<userId>|AdHN|<device_ID>,<device_name>,<deviceType>,<triggers>;
+  // Response: AdHN_resp|<hubId>|suc|<device_ID>
+  // ─────────────────────────────────────────────
+
+  async handleAddHubNode(ws, hubLocalId, userId, deviceData) {
+    // Strip trailing semicolon (used as separator on the hardware side)
+    const clean = deviceData.replace(/;$/, '');
+    const [deviceLocalId, deviceName, deviceType, deviceTrigs] = clean.split(',');
+
+    if (!deviceLocalId || !deviceName || !deviceType) {
+      return this.send(ws, 'error|Invalid hub node data');
+    }
+
+    if (!ws.dbId) {
+      return this.send(ws, 'error|Hub not registered');
+    }
+
+    try {
+      await hubService.addHubNode(userId, parseInt(ws.dbId), {
+        localId: deviceLocalId,
+        name: deviceName,
+        type: deviceType,
+        trigs: deviceTrigs || null
+      });
+      this.send(ws, `AdHN_resp|${hubLocalId}|suc|${deviceLocalId}`);
+    } catch (err) {
+      console.error('AdHN error:', err.message);
+      this.send(ws, 'error|Failed to add hub node');
+    }
+  }
+
+  // ─────────────────────────────────────────────
+  // REMAP CONNECTION  (reconnect helper)
+  // Looks up device then hub by localId + userId. Called from ping when ws.dbId is unset.
+  // ─────────────────────────────────────────────
+
+  async remapConnection(ws, localId, userId) {
+    try {
+      const device = await deviceService.getDeviceByLocalId(userId, localId);
+      if (device) {
+        ws.dbId = String(device.id);
+        ws.localId = localId;
+        ws.userId = userId;
+        ws.connectionType = 'device';
+        this.devices.set(String(device.id), ws);
+        this.deviceMeta.set(String(device.id), { userId, localId });
+        return;
+      }
+
+      const hub = await hubService.getHubByLocalId(userId, localId);
+      if (hub) {
+        ws.dbId = String(hub.id);
+        ws.hubLocalId = localId;
+        ws.userId = userId;
+        ws.connectionType = 'hub';
+        this.hubs.set(String(hub.id), ws);
+        this.hubMeta.set(String(hub.id), { userId, hubLocalId: localId });
+      }
+    } catch (err) {
+      console.error('remapConnection error:', err.message);
+    }
+  }
+
+  // ─────────────────────────────────────────────
   // APP → CLOUD → DEVICE  —  c_nd|<dbId>|<appId>|<todo>|<args...>
-  //
-  // Cloud relays to device as:
-  //   c_nd|<cloudId>|<appId>|<todo>|<args>
-  //
-  // No plan fields in relay — device already has them from mews handshake
+  // Cloud relays to device as: c_nd|<localId>|<appId>|<todo>|<args>
   // ─────────────────────────────────────────────
 
   async handleClientCommand(ws, parts) {
@@ -240,21 +339,19 @@ class WebSocketManager {
     const args       = parts.slice(4).join('|');
 
     if (!dbDeviceId || !todo) {
-      return this.send(ws, 'error|Device ID and todo required');
+      return this.send(ws, 'error|Device ID and command required');
     }
 
     try {
-      const device    = await deviceService.getDeviceForCommand(ws.userId, parseInt(dbDeviceId));
-      const meta      = this.deviceMeta.get(String(dbDeviceId));
-      const targetWs  = this.devices.get(String(dbDeviceId));
+      const device   = await deviceService.getDeviceForCommand(ws.userId, parseInt(dbDeviceId));
+      const meta     = this.deviceMeta.get(String(dbDeviceId));
+      const targetWs = this.devices.get(String(dbDeviceId));
 
       if (!targetWs || targetWs.readyState !== 1) {
         return this.send(ws, 'error|Device offline');
       }
 
-      const devToken = meta?.cloudId || String(dbDeviceId);
-
-      // Relay to device
+      const devToken = meta?.localId || String(dbDeviceId);
       const relay = args
         ? `c_nd|${devToken}|${appId}|${todo}|${args}`
         : `c_nd|${devToken}|${appId}|${todo}`;
@@ -267,35 +364,30 @@ class WebSocketManager {
   }
 
   // ─────────────────────────────────────────────
-  // DEVICE → CLOUD → APP  —  r_nd|<cloudId>|<appId>|<respTodo>|<args>|<stateName>
+  // DEVICE → CLOUD → APP  —  r_nd|<localId>|<appId>|<respTodo>|<stateData>
   //
-  // Cloud updates DB then forwards full response to the originating app.
-  // If appId is '-' → no app to notify, just update DB and broadcast state to user.
+  // Updates DB state then routes response back to originating app.
+  // appId '-' → no specific app to notify; broadcast state to all user sessions.
   // ─────────────────────────────────────────────
 
   async handleNodeResponse(ws, parts) {
-    const devToken  = parts[1];
+    const localId   = parts[1];
     const appId     = parts[2];
     const respTodo  = parts[3];
-    const stateData = parts.slice(4).join('|'); // everything after respTodo
+    const stateData = parts.slice(4).join('|');
 
-    // Best-effort DB state update
     if (ws.dbId) {
-      try {
-        await deviceService.updateDeviceState(parseInt(ws.dbId), stateData);
-      } catch (err) { /* non-critical */ }
+      try { await deviceService.updateDeviceState(parseInt(ws.dbId), stateData); } catch { /* non-critical */ }
     }
 
     if (!appId || appId === '-') {
-      // Server-device only — notify the device owner's app connections of state change
       const meta = ws.dbId ? this.deviceMeta.get(ws.dbId) : null;
       if (meta) {
-        this.notifyUser(meta.userId, `r_nd|${devToken}|-|${respTodo}|${stateData}`);
+        this.notifyUser(meta.userId, `r_nd|${localId}|-|${respTodo}|${stateData}`);
       }
       return;
     }
 
-    // Route full response back to the originating app session
     const appWs = this.appConnections.get(appId);
     if (appWs && appWs.readyState === 1) {
       this.send(appWs, parts.join('|'));
@@ -303,81 +395,28 @@ class WebSocketManager {
   }
 
   // ─────────────────────────────────────────────
-  // DEVICE PING  —  ping  (device sends every 30 s)
-  //
-  // Updates last_seen. Only replies if the server has queued data for this
-  // device (plan change, booking, etc.). Silence = nothing pending.
-  // Reply format: pong|<devId>|<cmd>|<data>
-  // ─────────────────────────────────────────────
-
-  async handleDevicePing(ws) {
-    if (ws.cloudId) {
-      try {
-        await deviceService.setDeviceOnline(ws.cloudId, true);
-      } catch (err) { /* non-critical */ }
-    }
-
-    const dbId = ws.dbId;
-    if (!dbId) return;
-
-    const queue = this.pendingPongs.get(dbId);
-    if (!queue || queue.length === 0) return;
-
-    // Drain the queue — send each pending pong then clear
-    const meta = this.deviceMeta.get(dbId);
-    const devId = meta?.cloudId || dbId;
-
-    for (const { cmd, data } of queue) {
-      this.send(ws, `pong|${devId}|${cmd}|${data}`);
-    }
-    this.pendingPongs.delete(dbId);
-  }
-
-  // ─────────────────────────────────────────────
-  // QUEUE A PONG  —  called externally when server needs to push data to a device
-  // e.g. plan change, booking queued while device was mid-cycle
-  // The data will be delivered on the device's next ping.
-  // ─────────────────────────────────────────────
-
-  queuePong(dbId, cmd, data) {
-    const key = String(dbId);
-    if (!this.pendingPongs.has(key)) {
-      this.pendingPongs.set(key, []);
-    }
-    this.pendingPongs.get(key).push({ cmd, data });
-  }
-
-  // ─────────────────────────────────────────────
   // DISCONNECT
   // ─────────────────────────────────────────────
 
   async handleDisconnect(ws) {
-    if (ws.appId) {
-      this.appConnections.delete(ws.appId);
-    }
+    if (ws.appId) this.appConnections.delete(ws.appId);
 
     if (ws.userId && this.clients.has(ws.userId)) {
       this.clients.get(ws.userId).delete(ws);
-      if (this.clients.get(ws.userId).size === 0) {
-        this.clients.delete(ws.userId);
-      }
+      if (this.clients.get(ws.userId).size === 0) this.clients.delete(ws.userId);
     }
 
     if (ws.connectionType === 'device' && ws.dbId) {
       this.devices.delete(ws.dbId);
       this.deviceMeta.delete(ws.dbId);
-      if (ws.cloudId) {
-        try { await deviceService.setDeviceOnline(ws.cloudId, false); } catch (e) { /* ignore */ }
-      }
+      try { await deviceService.setDeviceOnline(parseInt(ws.dbId), false); } catch { /* ignore */ }
       console.log(` Device disconnected: dbId=${ws.dbId}`);
     }
 
     if (ws.connectionType === 'hub' && ws.dbId) {
       this.hubs.delete(ws.dbId);
       this.hubMeta.delete(ws.dbId);
-      if (ws.cloudId) {
-        try { await hubService.setHubOnline(ws.cloudId, false); } catch (e) { /* ignore */ }
-      }
+      try { await hubService.setHubOnline(parseInt(ws.dbId), false); } catch { /* ignore */ }
       console.log(` Hub disconnected: dbId=${ws.dbId}`);
     }
   }
@@ -387,16 +426,15 @@ class WebSocketManager {
   // ─────────────────────────────────────────────
 
   /**
-   * Send a c_nd command to a device from an HTTP request (no app WS session).
-   * appId is always '-' since there's no WS client session to route a response to.
-   * Format: c_nd|<cloudId>|-|<todo>|<args>
+   * Send a command to a device from an HTTP request (no WS app session).
+   * appId is always '-'; device knows the response is a broadcast state update.
    */
   sendCommandToDevice(dbId, todo, args = '') {
     const ws = this.devices.get(String(dbId));
     if (!ws || ws.readyState !== 1) return false;
 
     const meta     = this.deviceMeta.get(String(dbId));
-    const devToken = meta?.cloudId || String(dbId);
+    const devToken = meta?.localId || String(dbId);
 
     const message = args
       ? `c_nd|${devToken}|-|${todo}|${args}`
@@ -407,21 +445,26 @@ class WebSocketManager {
   }
 
   /**
-   * Notify all WS connections belonging to a user.
+   * Broadcast a message to all WS sessions belonging to a user.
    */
   notifyUser(userId, message) {
     const connections = this.clients.get(userId);
     if (connections) {
-      connections.forEach((ws) => {
-        if (ws.readyState === 1) this.send(ws, message);
-      });
+      connections.forEach((ws) => { if (ws.readyState === 1) this.send(ws, message); });
     }
   }
 
+  /**
+   * Queue data to be delivered to a device on its next ping (e.g. plan changes).
+   */
+  queuePong(dbId, cmd, data) {
+    const key = String(dbId);
+    if (!this.pendingPongs.has(key)) this.pendingPongs.set(key, []);
+    this.pendingPongs.get(key).push({ cmd, data });
+  }
+
   send(ws, data) {
-    if (ws.readyState === 1) {
-      ws.send(data);
-    }
+    if (ws.readyState === 1) ws.send(data);
   }
 
   getStats() {

@@ -2,16 +2,12 @@ const express = require('express');
 const router = express.Router();
 const hubController = require('../controllers/hubController');
 const { authenticate } = require('../middlewares/auth');
-const {
-  registerHubValidator,
-  hubIdValidator
-} = require('../middlewares/validators');
+const { hubIdValidator } = require('../middlewares/validators');
 
 // All routes require authentication
 router.use(authenticate);
 
 // Hub CRUD
-router.post('/', registerHubValidator, hubController.registerHub);
 router.get('/', hubController.getHubs);
 router.get('/:hubId', hubIdValidator, hubController.getHub);
 router.put('/:hubId', hubIdValidator, hubController.updateHub);

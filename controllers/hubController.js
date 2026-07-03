@@ -5,26 +5,6 @@ const { asyncHandler } = require('../middlewares/errorHandler');
 const { parsePagination } = require('../utils/helpers');
 
 /**
- * Register Hub
- * POST /api/v1/hubs
- */
-const registerHub = asyncHandler(async (req, res) => {
-  const { hubToken, hubName, type, model } = req.body;
-
-  const result = await hubService.registerHub(req.user.id, {
-    hubToken,
-    hubName,
-    type,
-    model
-  });
-
-  return response.created(res, {
-    data: result,
-    message: SUCCESS_MESSAGES.HUB_CREATED
-  });
-});
-
-/**
  * Get All Hubs
  * GET /api/v1/hubs
  */
@@ -134,7 +114,6 @@ const unlinkDevice = asyncHandler(async (req, res) => {
 });
 
 module.exports = {
-  registerHub,
   getHubs,
   getHub,
   updateHub,

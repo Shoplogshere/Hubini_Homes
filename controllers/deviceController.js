@@ -1,51 +1,51 @@
+const jwt = require('jsonwebtoken');
 const deviceService = require('../services/deviceService');
 const response = require('../utils/response');
 const { SUCCESS_MESSAGES, ERROR_CODES } = require('../config/constants');
 const { asyncHandler } = require('../middlewares/errorHandler');
 const { parsePagination } = require('../utils/helpers');
 
-// WebSocket manager will be injected
+// WebSocket manager injected after server start
 let wsManager = null;
-const setWsManager = (manager) => {
-  wsManager = manager;
-};
+const setWsManager = (manager) => { wsManager = manager; };
 
 /**
- * Register Device
- * POST /api/v1/devices
+ * Fetch devices for client apps (getDs).
+ * POST /api/v1/devices/fetch
+ * Body: { "cmd": "getDs", "logintoken": "<jwt>" }
+ * No Bearer header needed — token is in body.
  */
-const registerDevice = asyncHandler(async (req, res) => {
-  const { Local_ID, Name, Type, Model, trigs } = req.body;
+const fetchDevices = asyncHandler(async (req, res) => {
+  const { cmd, logintoken } = req.body;
 
-  const result = await deviceService.registerDevice(req.user.id, {
-    Local_ID,
-    Name,
-    Type,
-    Model,
-    trigs
-  });
+  if (cmd !== 'getDs') {
+    return response.badRequest(res, { message: 'Invalid command. Expected: getDs' });
+  }
 
-  return response.created(res, {
-    data: result,
-    message: SUCCESS_MESSAGES.DEVICE_CREATED
-  });
+  if (!logintoken) {
+    return response.unauthorized(res, { message: 'Login token required' });
+  }
+
+  let decoded;
+  try {
+    decoded = jwt.verify(logintoken, process.env.JWT_SECRET);
+  } catch {
+    return response.unauthorized(res, { message: 'Invalid or expired login token' });
+  }
+
+  const devices = await deviceService.getDevicesForClient(decoded.userId);
+  return res.json(devices);
 });
 
 /**
- * Get All Devices
+ * Get All Devices (paginated)
  * GET /api/v1/devices
  */
 const getDevices = asyncHandler(async (req, res) => {
   const { page, limit, offset } = parsePagination(req.query);
   const { type, search } = req.query;
 
-  const result = await deviceService.getUserDevices(req.user.id, {
-    page,
-    limit,
-    offset,
-    type,
-    search
-  });
+  const result = await deviceService.getUserDevices(req.user.id, { page, limit, offset, type, search });
 
   return response.paginated(res, {
     data: result.devices,
@@ -56,25 +56,11 @@ const getDevices = asyncHandler(async (req, res) => {
 });
 
 /**
- * Get Devices for Client (getDs format)
- * GET /api/v1/devices/client
- */
-const getDevicesClient = asyncHandler(async (req, res) => {
-  const devices = await deviceService.getDevicesForClient(req.user.id);
-
-  // Return raw array as per client spec
-  return res.json(devices);
-});
-
-/**
  * Get Single Device
  * GET /api/v1/devices/:deviceId
  */
 const getDevice = asyncHandler(async (req, res) => {
-  const { deviceId } = req.params;
-
-  const device = await deviceService.getDevice(req.user.id, parseInt(deviceId));
-
+  const device = await deviceService.getDevice(req.user.id, parseInt(req.params.deviceId));
   return response.success(res, { data: device });
 });
 
@@ -83,14 +69,8 @@ const getDevice = asyncHandler(async (req, res) => {
  * PUT /api/v1/devices/:deviceId
  */
 const updateDevice = asyncHandler(async (req, res) => {
-  const { deviceId } = req.params;
-
-  const device = await deviceService.updateDevice(req.user.id, parseInt(deviceId), req.body);
-
-  return response.success(res, {
-    data: device,
-    message: SUCCESS_MESSAGES.DEVICE_UPDATED
-  });
+  const device = await deviceService.updateDevice(req.user.id, parseInt(req.params.deviceId), req.body);
+  return response.success(res, { data: device, message: SUCCESS_MESSAGES.DEVICE_UPDATED });
 });
 
 /**
@@ -98,14 +78,8 @@ const updateDevice = asyncHandler(async (req, res) => {
  * DELETE /api/v1/devices/:deviceId
  */
 const deleteDevice = asyncHandler(async (req, res) => {
-  const { deviceId } = req.params;
-
-  const result = await deviceService.deleteDevice(req.user.id, parseInt(deviceId));
-
-  return response.success(res, {
-    data: result,
-    message: SUCCESS_MESSAGES.DEVICE_DELETED
-  });
+  const result = await deviceService.deleteDevice(req.user.id, parseInt(req.params.deviceId));
+  return response.success(res, { data: result, message: SUCCESS_MESSAGES.DEVICE_DELETED });
 });
 
 /**
@@ -113,37 +87,21 @@ const deleteDevice = asyncHandler(async (req, res) => {
  * POST /api/v1/devices/:deviceId/command
  */
 const sendCommand = asyncHandler(async (req, res) => {
-  const { deviceId } = req.params;
   const { command } = req.body;
-
-  // Get device
-  const device = await deviceService.getDeviceForCommand(req.user.id, parseInt(deviceId));
+  const device = await deviceService.getDeviceForCommand(req.user.id, parseInt(req.params.deviceId));
 
   if (!device.is_online) {
-    return response.badRequest(res, {
-      message: 'Device is offline',
-      errorCode: ERROR_CODES.DEVICE_OFFLINE
-    });
+    return response.badRequest(res, { message: 'Device is offline', errorCode: ERROR_CODES.DEVICE_OFFLINE });
   }
 
-  // Log command
   await deviceService.logCommand(device.id, req.user.id, command);
 
-  // Send via WebSocket — appId '-' since this comes from HTTP, not a WS client session
   if (wsManager) {
     const sent = wsManager.sendCommandToDevice(device.id, 'command', command);
-
-    if (sent) {
-      return response.success(res, {
-        message: 'Command sent successfully'
-      });
-    }
+    if (sent) return response.success(res, { message: 'Command sent successfully' });
   }
 
-  return response.badRequest(res, {
-    message: 'Device connection not available',
-    errorCode: ERROR_CODES.DEVICE_COMMAND_FAILED
-  });
+  return response.badRequest(res, { message: 'Device connection not available', errorCode: ERROR_CODES.DEVICE_COMMAND_FAILED });
 });
 
 /**
@@ -151,33 +109,20 @@ const sendCommand = asyncHandler(async (req, res) => {
  * POST /api/v1/devices/:deviceId/trigger
  */
 const triggerDevice = asyncHandler(async (req, res) => {
-  const { deviceId } = req.params;
   const { trigger } = req.body;
+  const device = await deviceService.getDeviceForCommand(req.user.id, parseInt(req.params.deviceId));
 
-  // Get device
-  const device = await deviceService.getDeviceForCommand(req.user.id, parseInt(deviceId));
-
-  // Send via WebSocket — appId '-' since this comes from HTTP, not a WS client session
   if (wsManager) {
     const sent = wsManager.sendCommandToDevice(device.id, 'trigger', trigger);
-
-    if (sent) {
-      return response.success(res, {
-        message: 'Device triggered successfully'
-      });
-    }
+    if (sent) return response.success(res, { message: 'Device triggered successfully' });
   }
 
-  return response.badRequest(res, {
-    message: 'Device offline or not connected',
-    errorCode: ERROR_CODES.DEVICE_OFFLINE
-  });
+  return response.badRequest(res, { message: 'Device offline or not connected', errorCode: ERROR_CODES.DEVICE_OFFLINE });
 });
 
 module.exports = {
-  registerDevice,
+  fetchDevices,
   getDevices,
-  getDevicesClient,
   getDevice,
   updateDevice,
   deleteDevice,

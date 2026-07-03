@@ -4,19 +4,19 @@ const deviceController = require('../controllers/deviceController');
 const { authenticate } = require('../middlewares/auth');
 const { deviceCommandLimiter } = require('../middlewares/rateLimiter');
 const {
-  registerDeviceValidator,
   updateDeviceValidator,
   deviceIdValidator,
   deviceCommandValidator
 } = require('../middlewares/validators');
 
-// All routes require authentication
+// Fetch devices for client apps (token in body, not Bearer header)
+router.post('/fetch', deviceController.fetchDevices);
+
+// All routes below require JWT authentication
 router.use(authenticate);
 
 // Device CRUD
-router.post('/', registerDeviceValidator, deviceController.registerDevice);
 router.get('/', deviceController.getDevices);
-router.get('/client', deviceController.getDevicesClient); // getDs format
 router.get('/:deviceId', deviceIdValidator, deviceController.getDevice);
 router.put('/:deviceId', updateDeviceValidator, deviceController.updateDevice);
 router.delete('/:deviceId', deviceIdValidator, deviceController.deleteDevice);

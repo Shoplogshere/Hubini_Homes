@@ -1,7 +1,7 @@
 const bcrypt = require('bcrypt');
 const { query, transaction } = require('../config/database');
 const { generateAccessToken, generateRefreshToken, verifyRefreshToken } = require('../middlewares/auth');
-const { generateToken } = require('../utils/helpers');
+const { generateToken, generateAddDeviceToken } = require('../utils/helpers');
 const { ERROR_CODES } = require('../config/constants');
 
 const SALT_ROUNDS = 12;
@@ -52,8 +52,9 @@ const register = async ({ email, username, password, firstName, lastName, role, 
 
 /**
  * Login user
+ * Pass requestAddDevice: true to receive a one-time 20-char token for device registration.
  */
-const login = async ({ email, password }) => {
+const login = async ({ email, password, requestAddDevice = false }) => {
   // Find user
   const users = await query(
     'SELECT id, email, username, password_hash, is_verified, is_active, first_name, last_name FROM users WHERE email = ?',
@@ -99,6 +100,17 @@ const login = async ({ email, password }) => {
   // Update last login
   await query('UPDATE users SET last_login = NOW() WHERE id = ?', [user.id]);
 
+  // Optionally generate a one-time add-device token (24h expiry, single use)
+  let addDeviceToken = null;
+  if (requestAddDevice) {
+    addDeviceToken = generateAddDeviceToken();
+    const tokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    await query(
+      'INSERT INTO add_device_tokens (user_id, token, expires_at) VALUES (?, ?, ?)',
+      [user.id, addDeviceToken, tokenExpires]
+    );
+  }
+
   return {
     user: {
       id: user.id,
@@ -112,7 +124,8 @@ const login = async ({ email, password }) => {
       accessToken,
       refreshToken,
       expiresIn: process.env.JWT_EXPIRES_IN || '7d'
-    }
+    },
+    ...(addDeviceToken && { addDeviceToken })
   };
 };
 
@@ -325,6 +338,31 @@ const changePassword = async (userId, currentPassword, newPassword) => {
   return { message: 'Password changed successfully' };
 };
 
+/**
+ * Validate an add-device token.
+ * Returns { id, userId } if valid, null otherwise.
+ */
+const validateAddDeviceToken = async (token) => {
+  const records = await query(
+    'SELECT id, user_id, expires_at, used_at FROM add_device_tokens WHERE token = ?',
+    [token]
+  );
+
+  if (!records.length) return null;
+  const rec = records[0];
+  if (rec.used_at) return null;
+  if (new Date(rec.expires_at) < new Date()) return null;
+
+  return { id: rec.id, userId: rec.user_id };
+};
+
+/**
+ * Mark an add-device token as consumed (one-time use).
+ */
+const markAddDeviceTokenUsed = async (tokenId) => {
+  await query('UPDATE add_device_tokens SET used_at = NOW() WHERE id = ?', [tokenId]);
+};
+
 module.exports = {
   register,
   login,
@@ -334,5 +372,7 @@ module.exports = {
   refreshAccessToken,
   logout,
   logoutAll,
-  changePassword
+  changePassword,
+  validateAddDeviceToken,
+  markAddDeviceTokenUsed
 };

@@ -1,73 +1,42 @@
 const { query } = require('../config/database');
-const { generateCloudId } = require('../utils/helpers');
 const { ERROR_CODES } = require('../config/constants');
 
-// Device must connect via WebSocket within this window or be auto-deleted
-const ACTIVATION_TIMEOUT_MS = 1000 * 1000; // 1000 seconds
-
-const activationTimers = new Map(); // deviceId -> timer handle
-
-const scheduleActivationCleanup = (deviceId) => {
-  cancelActivationTimer(deviceId);
-  const timer = setTimeout(async () => {
-    activationTimers.delete(deviceId);
-    try {
-      const rows = await query('SELECT is_online FROM devices WHERE id = ?', [deviceId]);
-      if (rows.length > 0 && !rows[0].is_online) {
-        await query('DELETE FROM devices WHERE id = ?', [deviceId]);
-        console.log(` Auto-deleted inactive device: id=${deviceId}`);
-      }
-    } catch (err) {
-      console.error('Device cleanup timer error:', err.message);
-    }
-  }, ACTIVATION_TIMEOUT_MS);
-  activationTimers.set(deviceId, timer);
-};
-
-const cancelActivationTimer = (deviceId) => {
-  if (activationTimers.has(deviceId)) {
-    clearTimeout(activationTimers.get(deviceId));
-    activationTimers.delete(deviceId);
-  }
-};
-
 /**
- * Register new device
+ * Register device from WebSocket addD command.
+ * Idempotent: returns existing device if local_id already registered for this user.
  */
-const registerDevice = async (userId, { Local_ID, Name, Type, Model, trigs }) => {
-  // Check if device exists for this user
+const registerDeviceFromWS = async (userId, { localId, name, type, trigs, model }) => {
   const existing = await query(
     'SELECT id FROM devices WHERE user_id = ? AND local_id = ?',
-    [userId, Local_ID]
+    [userId, localId]
   );
 
   if (existing.length > 0) {
-    const error = new Error('Device with this Local_ID already exists');
-    error.statusCode = 409;
-    error.errorCode = ERROR_CODES.DEVICE_EXISTS;
-    throw error;
+    return { id: existing[0].id };
   }
 
-  // Generate cloud ID
-  const cloudId = generateCloudId('DEV');
-
   const result = await query(
-    `INSERT INTO devices (cloud_id, user_id, local_id, name, type, model, trigs)
-     VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id`,
-    [cloudId, userId, Local_ID, Name, Type, Model, trigs || null]
+    `INSERT INTO devices (user_id, local_id, name, type, model, trigs)
+     VALUES (?, ?, ?, ?, ?, ?) RETURNING id`,
+    [userId, localId, name, type, model, trigs || null]
   );
 
-  // Start activation timer — device must connect via WS or it gets deleted
-  scheduleActivationCleanup(result[0].id);
-
-  return {
-    id: result[0].id,
-    yourCloudID: cloudId
-  };
+  return { id: result[0].id };
 };
 
 /**
- * Get all devices for user
+ * Look up a device by local_id + user_id (used on ping reconnect).
+ */
+const getDeviceByLocalId = async (userId, localId) => {
+  const rows = await query(
+    'SELECT id, local_id, is_online FROM devices WHERE user_id = ? AND local_id = ?',
+    [userId, localId]
+  );
+  return rows[0] || null;
+};
+
+/**
+ * Get all devices for user (paginated, with optional type/search filters).
  */
 const getUserDevices = async (userId, { page, limit, offset, type, search }) => {
   let whereClause = 'WHERE user_id = ?';
@@ -83,15 +52,13 @@ const getUserDevices = async (userId, { page, limit, offset, type, search }) => 
     params.push(`%${search}%`, `%${search}%`);
   }
 
-  // Get count
   const countResult = await query(
     `SELECT COUNT(*)::int as total FROM devices ${whereClause}`,
     params
   );
 
-  // Get devices
   const devices = await query(
-    `SELECT id, cloud_id, local_id, name, type, model, trigs, last_state, is_online, last_seen, created_at
+    `SELECT id, local_id, name, type, model, trigs, last_state, is_online, last_seen, created_at
      FROM devices ${whereClause}
      ORDER BY created_at DESC
      LIMIT ? OFFSET ?`,
@@ -101,7 +68,6 @@ const getUserDevices = async (userId, { page, limit, offset, type, search }) => 
   return {
     devices: devices.map(d => ({
       id: d.id,
-      cloudId: d.cloud_id,
       Local_ID: d.local_id,
       name: d.name,
       type: d.type,
@@ -119,7 +85,7 @@ const getUserDevices = async (userId, { page, limit, offset, type, search }) => 
 };
 
 /**
- * Get devices in client format (getDs)
+ * Get all devices for user in the getDs client format (all devices, hub-connected included).
  */
 const getDevicesForClient = async (userId) => {
   const devices = await query(
@@ -140,11 +106,11 @@ const getDevicesForClient = async (userId) => {
 };
 
 /**
- * Get single device
+ * Get single device (with ownership check).
  */
 const getDevice = async (userId, deviceId) => {
   const devices = await query(
-    `SELECT id, cloud_id, local_id, name, type, model, trigs, last_state, is_online, last_seen, created_at, updated_at
+    `SELECT id, local_id, name, type, model, trigs, last_state, is_online, last_seen, created_at, updated_at
      FROM devices WHERE id = ? AND user_id = ?`,
     [deviceId, userId]
   );
@@ -159,7 +125,6 @@ const getDevice = async (userId, deviceId) => {
   const d = devices[0];
   return {
     id: d.id,
-    cloudId: d.cloud_id,
     Local_ID: d.local_id,
     name: d.name,
     type: d.type,
@@ -174,32 +139,9 @@ const getDevice = async (userId, deviceId) => {
 };
 
 /**
- * Get device by DB integer ID (used by WS mapping)
- */
-const getDeviceById = async (deviceId) => {
-  const devices = await query(
-    'SELECT id, cloud_id, user_id, local_id, name, type, model, trigs, last_state, is_online FROM devices WHERE id = ?',
-    [deviceId]
-  );
-  return devices[0] || null;
-};
-
-/**
- * Get device by cloud ID
- */
-const getDeviceByCloudId = async (cloudId) => {
-  const devices = await query(
-    'SELECT id, cloud_id, user_id, local_id, name, type, model, trigs, last_state, is_online FROM devices WHERE cloud_id = ?',
-    [cloudId]
-  );
-  return devices[0] || null;
-};
-
-/**
- * Update device
+ * Update device fields.
  */
 const updateDevice = async (userId, deviceId, updates) => {
-  // Check exists
   const existing = await query(
     'SELECT id FROM devices WHERE id = ? AND user_id = ?',
     [deviceId, userId]
@@ -212,22 +154,12 @@ const updateDevice = async (userId, deviceId, updates) => {
     throw error;
   }
 
-  // Build update
   const fields = [];
   const values = [];
 
-  if (updates.Name !== undefined) {
-    fields.push('name = ?');
-    values.push(updates.Name);
-  }
-  if (updates.Type !== undefined) {
-    fields.push('type = ?');
-    values.push(updates.Type);
-  }
-  if (updates.trigs !== undefined) {
-    fields.push('trigs = ?');
-    values.push(updates.trigs);
-  }
+  if (updates.Name !== undefined) { fields.push('name = ?'); values.push(updates.Name); }
+  if (updates.Type !== undefined) { fields.push('type = ?'); values.push(updates.Type); }
+  if (updates.trigs !== undefined) { fields.push('trigs = ?'); values.push(updates.trigs); }
 
   if (fields.length > 0) {
     values.push(deviceId);
@@ -238,7 +170,7 @@ const updateDevice = async (userId, deviceId, updates) => {
 };
 
 /**
- * Update device state
+ * Update device last_state (called when device sends r_nd).
  */
 const updateDeviceState = async (deviceId, state) => {
   await query(
@@ -248,17 +180,17 @@ const updateDeviceState = async (deviceId, state) => {
 };
 
 /**
- * Set device online status
+ * Set device online/offline status by DB id.
  */
-const setDeviceOnline = async (cloudId, isOnline) => {
+const setDeviceOnline = async (deviceId, isOnline) => {
   await query(
-    'UPDATE devices SET is_online = ?, last_seen = NOW() WHERE cloud_id = ?',
-    [isOnline, cloudId]
+    'UPDATE devices SET is_online = ?, last_seen = NOW() WHERE id = ?',
+    [isOnline, deviceId]
   );
 };
 
 /**
- * Delete device
+ * Delete device (with ownership check).
  */
 const deleteDevice = async (userId, deviceId) => {
   const existing = await query(
@@ -278,11 +210,11 @@ const deleteDevice = async (userId, deviceId) => {
 };
 
 /**
- * Get device for command (with ownership check)
+ * Get device for command dispatch (ownership check + online status).
  */
 const getDeviceForCommand = async (userId, deviceId) => {
   const devices = await query(
-    'SELECT id, cloud_id, is_online FROM devices WHERE id = ? AND user_id = ?',
+    'SELECT id, local_id, is_online FROM devices WHERE id = ? AND user_id = ?',
     [deviceId, userId]
   );
 
@@ -297,7 +229,7 @@ const getDeviceForCommand = async (userId, deviceId) => {
 };
 
 /**
- * Log device command
+ * Log a command sent to a device.
  */
 const logCommand = async (deviceId, userId, command, status = 'pending') => {
   await query(
@@ -307,18 +239,15 @@ const logCommand = async (deviceId, userId, command, status = 'pending') => {
 };
 
 module.exports = {
-  registerDevice,
+  registerDeviceFromWS,
+  getDeviceByLocalId,
   getUserDevices,
   getDevicesForClient,
   getDevice,
-  getDeviceById,
-  getDeviceByCloudId,
   updateDevice,
   updateDeviceState,
   setDeviceOnline,
   deleteDevice,
   getDeviceForCommand,
-  logCommand,
-  scheduleActivationCleanup,
-  cancelActivationTimer
+  logCommand
 };
